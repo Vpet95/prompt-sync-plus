@@ -1,0 +1,37 @@
+{
+  "name": "prompt-sync-plus",
+  "version": "1.0.0",
+  "description": "Node.js synchronous prompting library based heavily on prompt-sync with some fixes and enhancements",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/heapwolf/prompt-sync.git"
+  },
+  "keywords": [
+    "prompt",
+    "sync",
+    "blocking",
+    "readline",
+    "input",
+    "getline",
+    "repl",
+    "history",
+    "plus",
+    "fixes",
+    "enhancements"
+  ],
+  "contributors": [
+    {
+      "name": "Vuk Petrovic",
+      "email": "vuk.petrovic@quotapath.com"
+    }
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "strip-ansi": "^5.0.0",
+    "table": "^6.8.0"
+  }
+}
