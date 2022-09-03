@@ -134,4 +134,53 @@ describe("Prompt Sync Plus", () => {
     outputSpy.restore();
     exitStub.restore();
   });
+
+  it("Should handle End-of-Transmission character correctly, depending on whether the eot setting was passed in", () => {
+    const exitStub = sinon.stub(process, "exit").returns(0);
+    const outputSpy = sinon.spy(process.stdout, "write");
+
+    const msg = "Good";
+    // Enter necessary to exit prompt
+    let msgBuff = createMessageBuffer("", [4, Key.ENTER]);
+    readerStub = createReadSyncStub(msgBuff);
+
+    const prompt = promptSync();
+
+    let result = prompt("How are you? ");
+
+    // default behavior
+    expect(result.length).to.equal(0);
+    expect(exitStub.called).to.be.false;
+
+    outputSpy.resetHistory();
+    closerStub.resetHistory();
+    readerStub.resetHistory();
+    readerStub.restore();
+
+    // test case where input is not empty, EOT behavior should not happen
+    msgBuff = createMessageBuffer("Good", [4, Key.ENTER]);
+    readerStub = createReadSyncStub(msgBuff);
+
+    result = prompt("How are you? ", null, { eot: true });
+
+    expect(result).to.equal(msg);
+    expect(exitStub.called).to.be.false;
+
+    outputSpy.resetHistory();
+    closerStub.resetHistory();
+    readerStub.resetHistory();
+    readerStub.restore();
+
+    // ENTER necessary here since we stubbed out process.exit - we need the prompt to return
+    msgBuff = createMessageBuffer("", [4, Key.ENTER]);
+    readerStub = createReadSyncStub(msgBuff);
+
+    result = prompt("How are you? ", null, { eot: true });
+
+    expect(exitStub.calledWith(0)).to.be.true;
+    expect(outputSpy.calledWith("exit\n")).to.be.true;
+
+    outputSpy.restore();
+    exitStub.restore();
+  });
 });
