@@ -4,11 +4,12 @@
   "description": "Node.js synchronous prompting library based heavily on prompt-sync with some fixes and enhancements",
   "main": "index.js",
   "scripts": {
-    "test": "node test"
+    "build": "tsc && cp package.json ./dist && cd ./dist && npm pack",
+    "test": "mocha"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/heapwolf/prompt-sync.git"
+    "url": "https://github.com/Vpet95/prompt-sync-plus.git"
   },
   "keywords": [
     "prompt",
@@ -31,7 +32,15 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "joi": "^17.6.0",
     "strip-ansi": "^5.0.0",
     "table": "^6.8.0"
-  }
+  },
+  "devDependencies": {
+    "@types/node": "^18.7.13",
+    "chai": "^4.3.6",
+    "mocha": "^10.0.0",
+    "sinon": "^14.0.0"
+  },
+  "type": "module"
 }
