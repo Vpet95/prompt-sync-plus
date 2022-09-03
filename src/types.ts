@@ -122,6 +122,10 @@ export enum Key {
   SINGLE_QUOTE = 222,
 }
 
+export enum ExitCode {
+  SIGINT = 130,
+}
+
 type PromptSyncHistoryObj = {
   atStart: () => boolean;
   atPenultimate: () => boolean;

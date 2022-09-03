@@ -3,11 +3,11 @@ import fs from "fs";
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { Key } from "../dist/types.js";
+import { Key, ExitCode } from "../dist/types.js";
 import promptSync from "../dist/index.js";
 
-function createMessageBuffer(str) {
-  return Buffer.from([...str].map((c) => c.charCodeAt(0)).concat(Key.ENTER));
+function createMessageBuffer(str, specialKey = Key.ENTER) {
+  return Buffer.from([...str].map((c) => c.charCodeAt(0)).concat(specialKey));
 }
 
 function createReadSyncStub(buf) {
@@ -96,5 +96,42 @@ describe("Prompt Sync Plus", () => {
 
     expect(outputSpy.called).to.be.true;
     expect(outputSpy.calledWith(expectedMessage)).to.be.true;
+
+    outputSpy.resetHistory();
+    outputSpy.restore();
+  });
+
+  it("Should handle sigint behavior correctly, depending on whether the sigint setting was passed in", () => {
+    const exitStub = sinon.stub(process, "exit").returns(0);
+    const outputSpy = sinon.spy(process.stdout, "write");
+
+    const msg = "Good";
+    // simulates terminal interrupt signal
+    const msgBuff = createMessageBuffer(msg, 3);
+    readerStub = createReadSyncStub(msgBuff);
+
+    const prompt = promptSync();
+
+    let result = prompt("How are you? ");
+
+    // default behavior
+    expect(result).to.be.null;
+    expect(outputSpy.calledWith("^C\n")).to.be.true;
+    expect(closerStub.called).to.be.true;
+    expect(exitStub.called).to.be.false;
+
+    outputSpy.resetHistory();
+    closerStub.resetHistory();
+    readerStub.resetHistory();
+
+    result = prompt("How are you? ", null, { sigint: true });
+
+    expect(result).to.be.null;
+    expect(outputSpy.calledWith("^C\n")).to.be.true;
+    expect(closerStub.called).to.be.true;
+    expect(exitStub.calledWith(ExitCode.SIGINT)).to.be.true;
+
+    outputSpy.restore();
+    exitStub.restore();
   });
 });
