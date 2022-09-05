@@ -19,7 +19,9 @@ export enum CompleteOnOption {
 }
 
 export enum Key {
-  BACKSPACE = 8,
+  SIGINT = 3,
+  EOT = 4,
+  WIN_BACKSPACE = 8,
   TAB = 9,
   ENTER = 13,
   SHIFT = 16,
@@ -106,6 +108,7 @@ export enum Key {
   F10 = 121,
   F11 = 122,
   F12 = 123,
+  BACKSPACE = 127,
   NUM_LOCK = 144,
   SCROLL_LOCK = 145,
   MY_COMPUTER_MULTIMEDIA_KEYBOARD = 182,
@@ -123,6 +126,7 @@ export enum Key {
 }
 
 export enum ExitCode {
+  SUCCESS = 0,
   SIGINT = 130,
 }
 

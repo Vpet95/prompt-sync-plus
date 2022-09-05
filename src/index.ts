@@ -2,21 +2,22 @@ import fs from "fs";
 import stripAnsi from "strip-ansi";
 import { getBorderCharacters, table } from "table";
 import {
-  Config,
-  DEFAULT_CONFIG,
-  ConfigSchema,
   AutocompleteBehavior,
+  Config,
+  ConfigSchema,
+  DEFAULT_CONFIG,
+  ExitCode,
   Key,
   LineErasureMethod,
 } from "./types.js";
 import {
+  concat,
+  eraseLine,
   mergeLeft,
   move,
-  saveCursorPosition,
-  restoreCursorPosition,
-  eraseLine,
   moveCursorToColumn,
-  concat,
+  restoreCursorPosition,
+  saveCursorPosition,
 } from "./utils.js";
 
 // credit to kennebec, et. al.
@@ -283,29 +284,30 @@ export default function PromptSync(config: Config | undefined) {
               buf = Buffer.alloc(3);
             }
         }
+
         continue; // any other 3 character sequence is ignored
       }
 
       // if it is not a control character seq, assume only one character is read
       firstCharOfInput = buf[countBytesRead - 1];
 
-      // catch a ^C and return null
-      if (firstCharOfInput == 3) {
+      // ^C
+      if (firstCharOfInput == Key.SIGINT) {
         process.stdout.write("^C\n");
         fs.closeSync(fileDescriptor);
 
-        if (promptConfig.sigint) process.exit(130);
+        if (promptConfig.sigint) process.exit(ExitCode.SIGINT);
 
         process.stdin.setRawMode && process.stdin.setRawMode(wasRaw);
 
         return null;
       }
 
-      // catch a ^D and exit
-      if (firstCharOfInput == 4) {
+      // ^D
+      if (firstCharOfInput == Key.EOT) {
         if (userInput.length == 0 && promptConfig.eot) {
           process.stdout.write("exit\n");
-          process.exit(0);
+          process.exit(ExitCode.SUCCESS);
         }
       }
 
@@ -350,22 +352,26 @@ export default function PromptSync(config: Config | undefined) {
       }
 
       if (
-        firstCharOfInput == 127 ||
-        (process.platform == "win32" && firstCharOfInput == 8)
+        firstCharOfInput == Key.BACKSPACE ||
+        (process.platform == "win32" && firstCharOfInput == Key.WIN_BACKSPACE)
       ) {
-        //backspace
         if (!insertPosition) continue;
+
         userInput =
           userInput.slice(0, insertPosition - 1) +
           userInput.slice(insertPosition);
         insertPosition--;
+
         move(2).left.exec();
       } else {
-        if (firstCharOfInput < 32 || firstCharOfInput > 126) continue;
+        if (firstCharOfInput < Key.SPACE || firstCharOfInput >= Key.BACKSPACE)
+          continue;
+
         userInput =
           userInput.slice(0, insertPosition) +
           String.fromCharCode(firstCharOfInput) +
           userInput.slice(insertPosition);
+
         insertPosition++;
       }
 
