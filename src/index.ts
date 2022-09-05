@@ -8,7 +8,7 @@ import {
   AutocompleteBehavior,
   Key,
 } from "./types.js";
-import { mergeLeft } from "./utils.js";
+import { mergeLeft, move } from "./utils.js";
 
 // credit to kennebec, et. al.
 // https://stackoverflow.com/a/1917041/3578493
@@ -207,7 +207,7 @@ export default function PromptSync(config: Config | undefined) {
       if (countBytesRead > 1) {
         // received a control sequence
         switch (buf.toString()) {
-          case "\u001b[A": //up arrow
+          case move().up.sequence.escaped:
             if (masked) break;
             if (!history) break;
             if (history.atStart()) break;
@@ -220,7 +220,7 @@ export default function PromptSync(config: Config | undefined) {
             insertPosition = userInput.length;
             process.stdout.write("\u001b[2K\u001b[0G" + ask + userInput);
             break;
-          case "\u001b[B": //down arrow
+          case move().down.sequence.escaped:
             if (masked) break;
             if (!history) break;
             if (history.pastEnd()) break;
@@ -242,13 +242,13 @@ export default function PromptSync(config: Config | undefined) {
                 "G"
             );
             break;
-          case "\u001b[D": //left arrow
+          case move().left.sequence.escaped:
             if (masked) break;
             var before = insertPosition;
             insertPosition = --insertPosition < 0 ? 0 : insertPosition;
             if (before - insertPosition) process.stdout.write("\u001b[1D");
             break;
-          case "\u001b[C": //right arrow
+          case move().right.sequence.escaped:
             if (masked) break;
             insertPosition =
               ++insertPosition > userInput.length

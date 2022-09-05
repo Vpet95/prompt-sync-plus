@@ -126,6 +126,18 @@ export enum ExitCode {
   SIGINT = 130,
 }
 
+export const TermEscapeSequence = "\u001b";
+
+// https://en.wikipedia.org/wiki/ANSI_escape_code#Terminal_input_sequences
+export enum TermInputSequence {
+  ARROW_UP = "A",
+  ARROW_DOWN = "B",
+  ARROW_LEFT = "D",
+  ARROW_RIGHT = "C",
+  HOME = "H",
+  END = "F",
+}
+
 type PromptSyncHistoryObj = {
   atStart: () => boolean;
   atPenultimate: () => boolean;
