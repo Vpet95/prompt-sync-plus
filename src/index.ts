@@ -7,8 +7,17 @@ import {
   ConfigSchema,
   AutocompleteBehavior,
   Key,
+  LineErasureMethod,
 } from "./types.js";
-import { mergeLeft, move } from "./utils.js";
+import {
+  mergeLeft,
+  move,
+  saveCursorPosition,
+  restoreCursorPosition,
+  eraseLine,
+  moveCursorToColumn,
+  concat,
+} from "./utils.js";
 
 // credit to kennebec, et. al.
 // https://stackoverflow.com/a/1917041/3578493
@@ -57,14 +66,6 @@ function tablify(autocompleteMatches: string[]) {
     }),
     rowCount: result.length,
   };
-}
-
-function saveCursorPosition() {
-  process.stdout.write("\u001b[s");
-}
-
-function restoreCursorPosition() {
-  process.stdout.write("\u001B[u");
 }
 
 // for ANSI escape codes reference see https://en.wikipedia.org/wiki/ANSI_escape_code
@@ -156,7 +157,9 @@ export default function PromptSync(config: Config | undefined) {
       const currentResult = searchResults[autocompleteCycleIndex];
 
       if (currentResult) {
-        process.stdout.write("\r\u001b[K" + ask + currentResult);
+        process.stdout.write(
+          `\r${eraseLine().sequence.escaped}${ask}${currentResult}`
+        );
         userInput = currentResult;
 
         insertPosition = currentResult.length;
@@ -176,28 +179,27 @@ export default function PromptSync(config: Config | undefined) {
       insertPosition = userInput.length;
       const tableData = tablify(searchResults);
 
-      saveCursorPosition();
+      saveCursorPosition().exec();
       process.stdout.write(
-        "\r\u001b[K" + ask + userInput + "\n" + tableData.output
+        concat("\r", eraseLine(), ask, userInput, "\n", tableData.output)
       );
-      restoreCursorPosition();
+      restoreCursorPosition().exec();
 
       return tableData.rowCount;
     }
 
     function clearSuggestTable(countRows: number) {
       if (countRows) {
-        saveCursorPosition();
+        saveCursorPosition().exec();
 
-        // position as far left as we can
-        process.stdout.write("\u001B[" + process.stdout.columns + "D");
+        move(process.stdout.columns).left.exec();
 
         for (let moveCount = 0; moveCount < countRows; ++moveCount) {
-          process.stdout.write("\u001B[1B");
-          process.stdout.write("\u001b[K");
+          move().down.exec();
+          eraseLine().exec();
         }
 
-        restoreCursorPosition();
+        restoreCursorPosition().exec();
       }
     }
 
@@ -218,7 +220,14 @@ export default function PromptSync(config: Config | undefined) {
             }
             userInput = history.prev();
             insertPosition = userInput.length;
-            process.stdout.write("\u001b[2K\u001b[0G" + ask + userInput);
+            process.stdout.write(
+              concat(
+                eraseLine(LineErasureMethod.ENTIRE),
+                moveCursorToColumn(0),
+                ask,
+                userInput
+              )
+            );
             break;
           case move().down.sequence.escaped:
             if (masked) break;
@@ -233,20 +242,22 @@ export default function PromptSync(config: Config | undefined) {
               userInput = history.next();
               insertPosition = userInput.length;
             }
+
             process.stdout.write(
-              "\u001b[2K\u001b[0G" +
-                ask +
-                userInput +
-                "\u001b[" +
-                (insertPosition + ask.length + 1) +
-                "G"
+              concat(
+                eraseLine(LineErasureMethod.ENTIRE),
+                moveCursorToColumn(0),
+                ask,
+                userInput,
+                moveCursorToColumn(insertPosition + ask.length + 1)
+              )
             );
             break;
           case move().left.sequence.escaped:
             if (masked) break;
             var before = insertPosition;
             insertPosition = --insertPosition < 0 ? 0 : insertPosition;
-            if (before - insertPosition) process.stdout.write("\u001b[1D");
+            if (before - insertPosition) move().left.exec();
             break;
           case move().right.sequence.escaped:
             if (masked) break;
@@ -254,9 +265,7 @@ export default function PromptSync(config: Config | undefined) {
               ++insertPosition > userInput.length
                 ? userInput.length
                 : insertPosition;
-            process.stdout.write(
-              "\u001b[" + (insertPosition + ask.length + 1) + "G"
-            );
+            moveCursorToColumn(insertPosition + ask.length + 1).exec();
             break;
           default:
             if (buf.toString()) {
@@ -270,9 +279,7 @@ export default function PromptSync(config: Config | undefined) {
                 userInput,
                 insertPosition
               );
-              process.stdout.write(
-                "\u001b[" + (insertPosition + ask.length + 1) + "G"
-              );
+              moveCursorToColumn(insertPosition + ask.length + 1).exec();
               buf = Buffer.alloc(3);
             }
         }
@@ -352,7 +359,7 @@ export default function PromptSync(config: Config | undefined) {
           userInput.slice(0, insertPosition - 1) +
           userInput.slice(insertPosition);
         insertPosition--;
-        process.stdout.write("\u001b[2D");
+        move(2).left.exec();
       } else {
         if (firstCharOfInput < 32 || firstCharOfInput > 126) continue;
         userInput =
@@ -376,29 +383,53 @@ export default function PromptSync(config: Config | undefined) {
     ask: string,
     echo: string,
     str: string,
-    insert: number
+    insertPosition: number
   ) {
     if (masked) {
       process.stdout.write(
-        "\u001b[2K\u001b[0G" + ask + Array(str.length + 1).join(echo)
+        concat(
+          eraseLine(LineErasureMethod.ENTIRE),
+          moveCursorToColumn(0),
+          ask,
+          echo.repeat(str.length)
+        )
       );
     } else {
-      process.stdout.write("\u001b[s");
-      if (insert == str.length) {
-        process.stdout.write("\u001b[2K\u001b[0G" + ask + str);
+      saveCursorPosition().exec();
+      if (insertPosition === str.length) {
+        process.stdout.write(
+          concat(
+            eraseLine(LineErasureMethod.ENTIRE),
+            moveCursorToColumn(0),
+            ask,
+            str
+          )
+        );
       } else {
         if (ask) {
-          process.stdout.write("\u001b[2K\u001b[0G" + ask + str);
+          process.stdout.write(
+            concat(
+              eraseLine(LineErasureMethod.ENTIRE),
+              moveCursorToColumn(0),
+              ask,
+              str
+            )
+          );
         } else {
           process.stdout.write(
-            "\u001b[2K\u001b[0G" + str + "\u001b[" + (str.length - insert) + "D"
+            concat(
+              eraseLine(LineErasureMethod.ENTIRE),
+              moveCursorToColumn(0),
+              str,
+              move(str.length - insertPosition).left
+            )
           );
         }
       }
 
       // Reposition the cursor to the right of the insertion point
-      var askLength = stripAnsi(ask).length;
-      process.stdout.write(`\u001b[${askLength + 1 + insert}G`);
+      const askLength = stripAnsi(ask).length;
+      moveCursorToColumn(askLength + 1 + insertPosition).exec();
     }
   }
 

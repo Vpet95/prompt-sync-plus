@@ -76,6 +76,15 @@ describe("utils", () => {
   });
 
   describe("#move()", () => {
+    let writeSpy = null;
+
+    afterEach(() => {
+      if (writeSpy !== null) {
+        writeSpy.resetHistory();
+        writeSpy.restore();
+      }
+    });
+
     it("Should generate the correct sequences without a move count parameter", () => {
       const leftResult = move().left.sequence;
 
@@ -167,7 +176,7 @@ describe("utils", () => {
     });
 
     it("Should actually execute (print) the move if result's exec is called", () => {
-      const printStub = sinon.spy(process.stdout, "write");
+      writeSpy = sinon.spy(process.stdout, "write");
 
       const result = move(3).left;
       result.exec();
@@ -175,9 +184,7 @@ describe("utils", () => {
       const expectedSequence = `${TermEscapeSequence}[3${TermInputSequence.ARROW_LEFT}`;
 
       expect(result.sequence.escaped).to.equal(expectedSequence);
-      expect(printStub.calledWith(expectedSequence)).to.be.true;
-
-      printStub.restore();
+      expect(writeSpy.calledWith(expectedSequence)).to.be.true;
     });
   });
 });

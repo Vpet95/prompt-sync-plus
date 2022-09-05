@@ -26,6 +26,8 @@ function createReadSyncStub(buf) {
 describe("Prompt Sync Plus", () => {
   let openerStub = null;
   let closerStub = null;
+  let writeSpy = null;
+  let exitStub = null;
 
   // this is ok - Mocha only runs multiple test modules in paralell - tests within
   // individual files are run synchronously
@@ -40,6 +42,18 @@ describe("Prompt Sync Plus", () => {
     if (readerStub !== null) {
       readerStub.reset(); // clean up behavior and history
       readerStub.restore(); // un-wrap stub
+    }
+  });
+
+  afterEach(() => {
+    if (writeSpy !== null) {
+      writeSpy.resetHistory();
+      writeSpy.restore();
+    }
+
+    if (exitStub !== null) {
+      exitStub.resetHistory();
+      exitStub.restore();
     }
   });
 
@@ -74,7 +88,7 @@ describe("Prompt Sync Plus", () => {
   });
 
   it("Should output the given character provided by the echo option", () => {
-    const outputSpy = sinon.spy(process.stdout, "write");
+    writeSpy = sinon.spy(process.stdout, "write");
 
     const echoChar = "*";
     const msg = "password123";
@@ -94,16 +108,13 @@ describe("Prompt Sync Plus", () => {
       msg.length
     )}`;
 
-    expect(outputSpy.called).to.be.true;
-    expect(outputSpy.calledWith(expectedMessage)).to.be.true;
-
-    outputSpy.resetHistory();
-    outputSpy.restore();
+    expect(writeSpy.called).to.be.true;
+    expect(writeSpy.calledWith(expectedMessage)).to.be.true;
   });
 
   it("Should handle sigint behavior correctly, depending on whether the sigint setting was passed in", () => {
-    const exitStub = sinon.stub(process, "exit").returns(0);
-    const outputSpy = sinon.spy(process.stdout, "write");
+    exitStub = sinon.stub(process, "exit").returns(0);
+    writeSpy = sinon.spy(process.stdout, "write");
 
     const msg = "Good";
     // simulates terminal interrupt signal
@@ -116,28 +127,25 @@ describe("Prompt Sync Plus", () => {
 
     // default behavior
     expect(result).to.be.null;
-    expect(outputSpy.calledWith("^C\n")).to.be.true;
+    expect(writeSpy.calledWith("^C\n")).to.be.true;
     expect(closerStub.called).to.be.true;
     expect(exitStub.called).to.be.false;
 
-    outputSpy.resetHistory();
+    writeSpy.resetHistory();
     closerStub.resetHistory();
     readerStub.resetHistory();
 
     result = prompt("How are you? ", null, { sigint: true });
 
     expect(result).to.be.null;
-    expect(outputSpy.calledWith("^C\n")).to.be.true;
+    expect(writeSpy.calledWith("^C\n")).to.be.true;
     expect(closerStub.called).to.be.true;
     expect(exitStub.calledWith(ExitCode.SIGINT)).to.be.true;
-
-    outputSpy.restore();
-    exitStub.restore();
   });
 
   it("Should handle End-of-Transmission character correctly, depending on whether the eot setting was passed in", () => {
-    const exitStub = sinon.stub(process, "exit").returns(0);
-    const outputSpy = sinon.spy(process.stdout, "write");
+    exitStub = sinon.stub(process, "exit").returns(0);
+    writeSpy = sinon.spy(process.stdout, "write");
 
     const msg = "Good";
     // Enter necessary to exit prompt
@@ -152,7 +160,7 @@ describe("Prompt Sync Plus", () => {
     expect(result.length).to.equal(0);
     expect(exitStub.called).to.be.false;
 
-    outputSpy.resetHistory();
+    writeSpy.resetHistory();
     closerStub.resetHistory();
     readerStub.resetHistory();
     readerStub.restore();
@@ -166,7 +174,7 @@ describe("Prompt Sync Plus", () => {
     expect(result).to.equal(msg);
     expect(exitStub.called).to.be.false;
 
-    outputSpy.resetHistory();
+    writeSpy.resetHistory();
     closerStub.resetHistory();
     readerStub.resetHistory();
     readerStub.restore();
@@ -178,9 +186,6 @@ describe("Prompt Sync Plus", () => {
     result = prompt("How are you? ", null, { eot: true });
 
     expect(exitStub.calledWith(0)).to.be.true;
-    expect(outputSpy.calledWith("exit\n")).to.be.true;
-
-    outputSpy.restore();
-    exitStub.restore();
+    expect(writeSpy.calledWith("exit\n")).to.be.true;
   });
 });

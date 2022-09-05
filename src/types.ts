@@ -128,14 +128,24 @@ export enum ExitCode {
 
 export const TermEscapeSequence = "\u001b";
 
-// https://en.wikipedia.org/wiki/ANSI_escape_code#Terminal_input_sequences
+// https://man7.org/linux/man-pages/man4/console_codes.4.html
 export enum TermInputSequence {
   ARROW_UP = "A",
   ARROW_DOWN = "B",
   ARROW_LEFT = "D",
   ARROW_RIGHT = "C",
-  HOME = "H",
   END = "F",
+  ERASE_LINE = "K",
+  HOME = "H",
+  MOVE_CURSOR_TO_COLUMN = "G",
+  RESTORE_CURSOR = "U",
+  SAVE_CURSOR = "S",
+}
+
+export enum LineErasureMethod {
+  CURSOR_TO_END = "",
+  BEGINNING_TO_CURSOR = "1",
+  ENTIRE = "2",
 }
 
 type PromptSyncHistoryObj = {
