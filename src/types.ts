@@ -227,4 +227,17 @@ export const DEFAULT_CONFIG: Config = {
   history: undefined,
 };
 
+export const EMPTY_CONFIG: Config = {
+  autocomplete: {
+    searchFn: undefined,
+    behavior: undefined,
+    completeOn: undefined,
+    triggerKeyCode: undefined,
+  },
+  echo: undefined,
+  eot: undefined,
+  sigint: undefined,
+  history: undefined,
+};
+
 export type GenericObject = { [key: string]: any };

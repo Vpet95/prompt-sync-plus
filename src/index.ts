@@ -6,6 +6,7 @@ import {
   Config,
   ConfigSchema,
   DEFAULT_CONFIG,
+  EMPTY_CONFIG,
   ExitCode,
   Key,
   LineErasureMethod,
@@ -73,7 +74,7 @@ function tablify(autocompleteMatches: string[]) {
 
 export default function PromptSync(config: Config | undefined) {
   const globalConfig = config
-    ? mergeLeft(config, DEFAULT_CONFIG)
+    ? mergeLeft(mergeLeft(EMPTY_CONFIG, config), DEFAULT_CONFIG)
     : DEFAULT_CONFIG;
 
   ConfigSchema.validate(globalConfig);
@@ -87,12 +88,12 @@ export default function PromptSync(config: Config | undefined) {
     const promptConfig = (
       value
         ? typeof value === "object"
-          ? mergeLeft(value, globalConfig)
+          ? mergeLeft(mergeLeft(EMPTY_CONFIG, value), globalConfig)
           : configOverride
-          ? mergeLeft(configOverride, globalConfig)
+          ? mergeLeft(mergeLeft(EMPTY_CONFIG, configOverride), globalConfig)
           : globalConfig
         : configOverride
-        ? mergeLeft(configOverride, globalConfig)
+        ? mergeLeft(mergeLeft(EMPTY_CONFIG, configOverride), globalConfig)
         : globalConfig
     ) as Config;
 
@@ -150,12 +151,12 @@ export default function PromptSync(config: Config | undefined) {
         return;
       }
 
+      const currentResult = searchResults[autocompleteCycleIndex];
+
       autocompleteCycleIndex =
         autocompleteCycleIndex >= searchResults.length - 1
           ? 0
           : autocompleteCycleIndex + 1;
-
-      const currentResult = searchResults[autocompleteCycleIndex];
 
       if (currentResult) {
         process.stdout.write(
@@ -311,11 +312,6 @@ export default function PromptSync(config: Config | undefined) {
         }
       }
 
-      // console.log(
-      //   `countBytesRead: ${countBytesRead}, buffer: ${buf.toString()}`
-      // );
-      // console.log(`firstCharOfInput: ${firstCharOfInput}`);
-
       // catch the terminating character
       if (firstCharOfInput === Key.ENTER) {
         clearSuggestTable(numRowsToClear);
@@ -344,7 +340,7 @@ export default function PromptSync(config: Config | undefined) {
         }
       } else {
         // user entered anything other than TAB; reset from last use of autocomplete
-        autoCompleteSearchTerm = undefined;
+        autoCompleteSearchTerm = "";
         // reset cycle - next time user hits tab might yield a different result list
         autocompleteCycleIndex = 0;
 
