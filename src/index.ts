@@ -115,10 +115,23 @@ export default function PromptSync(config: Config | undefined) {
       if (searchResults.length === 0) {
         process.stdout.write("\t");
         return 0;
+      } else if (searchResults.length === 1) {
+        userInput = searchResults[0];
+        insertPosition = userInput.length;
+        process.stdout.write(concat("\r", eraseLine(), ask, userInput));
+        moveCursorToColumn(ask.length + userInput.length + 1).exec();
+
+        return 0;
       }
 
-      if (promptConfig.autocomplete.fillCommonSubstring)
-        userInput = getCommonStartingSubstring(searchResults) ?? userInput;
+      if (promptConfig.autocomplete.fillCommonSubstring) {
+        const commonSubstring = getCommonStartingSubstring(searchResults);
+
+        if (commonSubstring && commonSubstring !== userInput) {
+          userInput = commonSubstring;
+          moveCursorToColumn(ask.length + userInput.length + 1).exec();
+        }
+      }
 
       insertPosition = userInput.length;
       const tableData = tablify(
@@ -126,7 +139,6 @@ export default function PromptSync(config: Config | undefined) {
         promptConfig.autocomplete.suggestColCount
       );
 
-      moveCursorToColumn(ask.length + userInput.length + 1).exec();
       saveCursorPosition().exec();
       process.stdout.write(
         concat("\r", eraseLine(), ask, userInput, "\n", tableData.output)
@@ -134,6 +146,10 @@ export default function PromptSync(config: Config | undefined) {
       restoreCursorPosition().exec();
 
       return tableData.rowCount;
+    }
+
+    function autocompleteHybrid() {
+      // todo
     }
 
     function clearSuggestTable(countRows: number) {
@@ -278,7 +294,13 @@ export default function PromptSync(config: Config | undefined) {
             autocompleteCycle();
             break;
           case AutocompleteBehavior.SUGGEST:
+            const currentUserInput = userInput;
+            const prevRowsToClear = numRowsToClear;
             numRowsToClear = autocompleteSuggest();
+
+            if (numRowsToClear === 0 && currentUserInput !== userInput)
+              clearSuggestTable(prevRowsToClear);
+
             break;
           case AutocompleteBehavior.HYBRID:
             // todo - implement
