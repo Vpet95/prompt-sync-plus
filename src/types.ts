@@ -143,7 +143,7 @@ export enum TermInputSequence {
   HOME = "H",
   MOVE_CURSOR_TO_COLUMN = "G",
   RESTORE_CURSOR = "U",
-  SAVE_CURSOR = "S",
+  SAVE_CURSOR = "s",
 }
 
 export enum LineErasureMethod {

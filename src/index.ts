@@ -402,6 +402,7 @@ export default function PromptSync(config: Config | undefined) {
       );
     } else {
       saveCursorPosition().exec();
+
       if (insertPosition === str.length) {
         process.stdout.write(
           concat(
