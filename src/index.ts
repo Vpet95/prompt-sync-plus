@@ -145,7 +145,7 @@ export default function PromptSync(config: Config | undefined) {
         autoCompleteSearchTerm
       );
 
-      if (searchResults.length == 0) {
+      if (searchResults.length === 0) {
         process.stdout.write("\t");
         return;
       }
@@ -172,7 +172,7 @@ export default function PromptSync(config: Config | undefined) {
 
       const searchResults = promptConfig.autocomplete?.searchFn(userInput);
 
-      if (searchResults.length == 0) {
+      if (searchResults.length === 0) {
         process.stdout.write("\t");
         return 0;
       }
@@ -292,7 +292,7 @@ export default function PromptSync(config: Config | undefined) {
       firstCharOfInput = buf[countBytesRead - 1];
 
       // ^C
-      if (firstCharOfInput == Key.SIGINT) {
+      if (firstCharOfInput === Key.SIGINT) {
         process.stdout.write("^C\n");
         fs.closeSync(fileDescriptor);
 
@@ -304,8 +304,8 @@ export default function PromptSync(config: Config | undefined) {
       }
 
       // ^D
-      if (firstCharOfInput == Key.EOT) {
-        if (userInput.length == 0 && promptConfig.eot) {
+      if (firstCharOfInput === Key.EOT) {
+        if (userInput.length === 0 && promptConfig.eot) {
           process.stdout.write("exit\n");
           process.exit(ExitCode.SUCCESS);
         }
@@ -317,7 +317,7 @@ export default function PromptSync(config: Config | undefined) {
       // console.log(`firstCharOfInput: ${firstCharOfInput}`);
 
       // catch the terminating character
-      if (firstCharOfInput == Key.ENTER) {
+      if (firstCharOfInput === Key.ENTER) {
         clearSuggestTable(numRowsToClear);
 
         fs.closeSync(fileDescriptor);
@@ -352,8 +352,8 @@ export default function PromptSync(config: Config | undefined) {
       }
 
       if (
-        firstCharOfInput == Key.BACKSPACE ||
-        (process.platform == "win32" && firstCharOfInput == Key.WIN_BACKSPACE)
+        firstCharOfInput === Key.BACKSPACE ||
+        (process.platform === "win32" && firstCharOfInput === Key.WIN_BACKSPACE)
       ) {
         if (!insertPosition) continue;
 
