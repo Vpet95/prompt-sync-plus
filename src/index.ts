@@ -1,6 +1,5 @@
 import fs from "fs";
 import stripAnsi from "strip-ansi";
-import { getBorderCharacters, table } from "table";
 import {
   AutocompleteBehavior,
   Config,
@@ -19,58 +18,9 @@ import {
   moveCursorToColumn,
   restoreCursorPosition,
   saveCursorPosition,
+  tablify,
+  getCommonStartingSubstring,
 } from "./utils.js";
-
-// credit to kennebec, et. al.
-// https://stackoverflow.com/a/1917041/3578493
-function commonStartingSubstring(autocompleteMatches: string[]) {
-  const sortedMatches = autocompleteMatches.concat().sort();
-  const first = sortedMatches[0];
-  const last = sortedMatches.slice(-1)[0];
-
-  return first.substring(
-    0,
-    first.split("").filter((c, index) => c === last[index]).length - 1
-  );
-}
-
-// takes a list of auto-complete matches and converts them into an [n x 3] table
-// of strings
-function tablify(autocompleteMatches: string[]) {
-  const result: string[][] = [];
-  const currentRow: string[] = [];
-
-  autocompleteMatches.forEach((str) => {
-    currentRow.push(str);
-
-    if (currentRow.length === 3) {
-      result.push(currentRow.concat());
-      currentRow.length = 0;
-    }
-  });
-
-  if (currentRow.length) {
-    // fill in any missing cells - table requires consistent cell counts per row
-    for (let emptyCells = 3 - currentRow.length; emptyCells > 0; --emptyCells)
-      currentRow.push("");
-
-    result.push(currentRow.concat());
-  }
-
-  return {
-    output: table(result, {
-      border: getBorderCharacters("void"),
-      columnDefault: {
-        paddingLeft: 2,
-        paddingRight: 2,
-      },
-      drawHorizontalLine: () => false,
-    }),
-    rowCount: result.length,
-  };
-}
-
-// for ANSI escape codes reference see https://en.wikipedia.org/wiki/ANSI_escape_code
 
 export default function PromptSync(config: Config | undefined) {
   const globalConfig = config
@@ -116,7 +66,7 @@ export default function PromptSync(config: Config | undefined) {
 
     // a temporary buffer to store the user's current input during history UP/DOWN arrow actions
     let savedUserInput = "";
-    let autoCompleteSearchTerm = "";
+    let cycleSearchTerm = "";
 
     const masked = Boolean(promptConfig.echo);
 
@@ -136,15 +86,10 @@ export default function PromptSync(config: Config | undefined) {
     let autocompleteCycleIndex = 0;
 
     function autocompleteCycle() {
-      if (!promptConfig.autocomplete?.searchFn) return;
-
       // first TAB hit, save off original input
-      if (autoCompleteSearchTerm.length === 0)
-        autoCompleteSearchTerm = userInput;
+      if (cycleSearchTerm.length === 0) cycleSearchTerm = userInput;
 
-      const searchResults = promptConfig.autocomplete?.searchFn(
-        autoCompleteSearchTerm
-      );
+      const searchResults = promptConfig.autocomplete.searchFn(cycleSearchTerm);
 
       if (searchResults.length === 0) {
         process.stdout.write("\t");
@@ -158,29 +103,30 @@ export default function PromptSync(config: Config | undefined) {
           ? 0
           : autocompleteCycleIndex + 1;
 
-      if (currentResult) {
-        process.stdout.write(
-          `\r${eraseLine().sequence.escaped}${ask}${currentResult}`
-        );
-        userInput = currentResult;
+      process.stdout.write(concat("\r", eraseLine(), ask, currentResult));
 
-        insertPosition = currentResult.length;
-      }
+      userInput = currentResult;
+      insertPosition = userInput.length;
     }
 
     function autocompleteSuggest() {
-      if (!promptConfig.autocomplete?.searchFn) return 0;
-
-      const searchResults = promptConfig.autocomplete?.searchFn(userInput);
+      const searchResults = promptConfig.autocomplete.searchFn(userInput);
 
       if (searchResults.length === 0) {
         process.stdout.write("\t");
         return 0;
       }
 
-      insertPosition = userInput.length;
-      const tableData = tablify(searchResults);
+      if (promptConfig.autocomplete.fillCommonSubstring)
+        userInput = getCommonStartingSubstring(searchResults) ?? userInput;
 
+      insertPosition = userInput.length;
+      const tableData = tablify(
+        searchResults,
+        promptConfig.autocomplete.suggestColCount
+      );
+
+      moveCursorToColumn(ask.length + userInput.length + 1).exec();
       saveCursorPosition().exec();
       process.stdout.write(
         concat("\r", eraseLine(), ask, userInput, "\n", tableData.output)
@@ -340,7 +286,7 @@ export default function PromptSync(config: Config | undefined) {
         }
       } else {
         // user entered anything other than TAB; reset from last use of autocomplete
-        autoCompleteSearchTerm = "";
+        cycleSearchTerm = "";
         // reset cycle - next time user hits tab might yield a different result list
         autocompleteCycleIndex = 0;
 

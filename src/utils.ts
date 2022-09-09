@@ -1,3 +1,4 @@
+import { getBorderCharacters, table } from "table";
 import { GenericObject } from "./types.js";
 import {
   TermEscapeSequence,
@@ -93,3 +94,60 @@ export const concat = (...args: Array<SequenceResponse | string>) =>
   args
     .map((arg) => (typeof arg === "string" ? arg : arg.sequence.escaped))
     .reduce((accum, value) => `${accum}${value}`);
+
+// takes a list of auto-complete matches and converts them into an [n x 3] table
+// of strings
+export const tablify = (autocompleteMatches: string[], colCount: number) => {
+  const result: string[][] = [];
+  const currentRow: string[] = [];
+
+  autocompleteMatches.forEach((str) => {
+    currentRow.push(str);
+
+    if (currentRow.length === colCount) {
+      result.push(currentRow.concat());
+      currentRow.length = 0;
+    }
+  });
+
+  if (currentRow.length) {
+    // fill in any missing cells - table requires consistent cell counts per row
+    for (
+      let emptyCells = colCount - currentRow.length;
+      emptyCells > 0;
+      --emptyCells
+    )
+      currentRow.push("");
+
+    result.push(currentRow.concat());
+  }
+
+  return {
+    output: table(result, {
+      border: getBorderCharacters("void"),
+      columnDefault: {
+        paddingLeft: 2,
+        paddingRight: 2,
+      },
+      drawHorizontalLine: () => false,
+    }),
+    rowCount: result.length,
+  };
+};
+
+// credit to kennebec, et. al.
+// https://stackoverflow.com/a/1917041/3578493
+export const getCommonStartingSubstring = (autocompleteMatches: string[]) => {
+  const sortedMatches = autocompleteMatches.concat().sort();
+  const first = sortedMatches[0];
+  const last = sortedMatches.slice(-1)[0];
+
+  const result = [];
+
+  for (let i = 0; i < Math.min(first.length, last.length); ++i) {
+    if (first[i] === last[i]) result.push(first[i]);
+    else return result.join("");
+  }
+
+  return result.length ? result.join("") : null;
+};

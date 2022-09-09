@@ -142,7 +142,7 @@ export enum TermInputSequence {
   ERASE_LINE = "K",
   HOME = "H",
   MOVE_CURSOR_TO_COLUMN = "G",
-  RESTORE_CURSOR = "U",
+  RESTORE_CURSOR = "u",
   SAVE_CURSOR = "s",
 }
 
@@ -166,12 +166,16 @@ type PromptSyncHistoryObj = {
 
 export type Config = {
   autocomplete: {
-    // the search function used to generate a list of possible completions given a query string
-    searchFn?: (query: string) => string[];
     // determines how the library responds to the searchFn results
     behavior: AutocompleteBehavior;
     // determines when autocompletion activates
     completeOn: CompleteOnOption;
+    // determines whether the behavior of autocomplete SUGGEST should fill the given input with the common substring of results
+    fillCommonSubstring: boolean;
+    // the search function used to generate a list of possible completions given a query string
+    searchFn?: (query: string) => string[];
+    // number of columns to display autocomplete suggestions in (if behavior is SUGGEST or HYBRID)
+    suggestColCount: number;
     // determines which key activates autocompletion
     // defaults to TAB; keycode: 9
     triggerKeyCode: Key;
@@ -189,13 +193,15 @@ export type Config = {
 
 export const ConfigSchema = Joi.object({
   autocomplete: Joi.object({
-    searchFn: Joi.function().arity(1),
     behavior: Joi.string()
       .allow(...Object.values(AutocompleteBehavior))
       .insensitive(),
     completeOn: Joi.string()
       .allow(...Object.values(CompleteOnOption))
       .insensitive(),
+    fillCommonSubstring: Joi.boolean(),
+    searchFn: Joi.function().arity(1),
+    suggestColCount: Joi.number().min(1),
     triggerKeyCode: Joi.number().allow(...Object.values(Key)),
   }),
   echo: Joi.string(),
@@ -216,9 +222,11 @@ export const ConfigSchema = Joi.object({
 
 export const DEFAULT_CONFIG: Config = {
   autocomplete: {
-    searchFn: (_: string) => [],
     behavior: AutocompleteBehavior.CYCLE,
     completeOn: CompleteOnOption.KEYPRESS,
+    fillCommonSubstring: false,
+    searchFn: (_: string) => [],
+    suggestColCount: 3,
     triggerKeyCode: Key.TAB,
   },
   echo: "",
@@ -229,9 +237,11 @@ export const DEFAULT_CONFIG: Config = {
 
 export const EMPTY_CONFIG: Config = {
   autocomplete: {
-    searchFn: undefined,
     behavior: undefined,
     completeOn: undefined,
+    fillCommonSubstring: undefined,
+    searchFn: undefined,
+    suggestColCount: undefined,
     triggerKeyCode: undefined,
   },
   echo: undefined,
