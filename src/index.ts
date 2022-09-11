@@ -149,7 +149,46 @@ export default function PromptSync(config: Config | undefined) {
     }
 
     function autocompleteHybrid() {
-      // todo
+      // first TAB hit, save off original input
+      if (cycleSearchTerm.length === 0) cycleSearchTerm = userInput;
+
+      const searchResults = promptConfig.autocomplete.searchFn(cycleSearchTerm);
+
+      if (searchResults.length === 0) {
+        process.stdout.write("\t");
+        return 0;
+      } else if (searchResults.length === 1) {
+        userInput = searchResults[0];
+        insertPosition = userInput.length;
+        process.stdout.write(concat("\r", eraseLine(), ask, userInput));
+        moveCursorToColumn(ask.length + userInput.length + 1).exec();
+
+        return 0;
+      }
+
+      const currentResult = searchResults[autocompleteCycleIndex];
+
+      autocompleteCycleIndex =
+        autocompleteCycleIndex >= searchResults.length - 1
+          ? 0
+          : autocompleteCycleIndex + 1;
+
+      const tableData = tablify(
+        searchResults,
+        promptConfig.autocomplete.suggestColCount
+      );
+
+      userInput = currentResult;
+      insertPosition = userInput.length;
+
+      saveCursorPosition().exec();
+      process.stdout.write(
+        concat("\r", eraseLine(), ask, userInput, "\n", tableData.output)
+      );
+      restoreCursorPosition().exec();
+      moveCursorToColumn(ask.length + userInput.length + 1).exec();
+
+      return tableData.rowCount;
     }
 
     function clearSuggestTable(countRows: number) {
@@ -289,13 +328,14 @@ export default function PromptSync(config: Config | undefined) {
         promptConfig.autocomplete?.searchFn &&
         firstCharOfInput === promptConfig.autocomplete?.triggerKeyCode
       ) {
+        const currentUserInput = userInput;
+        const prevRowsToClear = numRowsToClear;
+
         switch (promptConfig.autocomplete?.behavior?.toLowerCase()) {
           case AutocompleteBehavior.CYCLE:
             autocompleteCycle();
             break;
           case AutocompleteBehavior.SUGGEST:
-            const currentUserInput = userInput;
-            const prevRowsToClear = numRowsToClear;
             numRowsToClear = autocompleteSuggest();
 
             if (numRowsToClear === 0 && currentUserInput !== userInput)
@@ -303,7 +343,11 @@ export default function PromptSync(config: Config | undefined) {
 
             break;
           case AutocompleteBehavior.HYBRID:
-            // todo - implement
+            numRowsToClear = autocompleteHybrid();
+
+            if (numRowsToClear === 0 && currentUserInput !== userInput)
+              clearSuggestTable(prevRowsToClear);
+
             break;
         }
       } else {
