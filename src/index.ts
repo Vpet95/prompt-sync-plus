@@ -92,6 +92,8 @@ export default function PromptSync(config: Config | undefined) {
       const searchResults = promptConfig.autocomplete.searchFn(cycleSearchTerm);
 
       if (searchResults.length === 0) {
+        userInput += "\t";
+        insertPosition = userInput.length;
         process.stdout.write("\t");
         return;
       }
@@ -113,6 +115,8 @@ export default function PromptSync(config: Config | undefined) {
       const searchResults = promptConfig.autocomplete.searchFn(userInput);
 
       if (searchResults.length === 0) {
+        userInput += "\t";
+        insertPosition = userInput.length;
         process.stdout.write("\t");
         return 0;
       } else if (searchResults.length === 1) {
@@ -155,6 +159,8 @@ export default function PromptSync(config: Config | undefined) {
       const searchResults = promptConfig.autocomplete.searchFn(cycleSearchTerm);
 
       if (searchResults.length === 0) {
+        userInput += "\t";
+        insertPosition = userInput.length;
         process.stdout.write("\t");
         return 0;
       } else if (searchResults.length === 1) {

@@ -2,7 +2,7 @@ import { expect } from "chai";
 import sinon from "sinon";
 
 import { TermEscapeSequence, TermInputSequence } from "../dist/types.js";
-import { mergeLeft, move } from "../dist/utils.js";
+import { mergeLeft, move, getCommonStartingSubstring } from "../dist/utils.js";
 
 describe("utils", () => {
   describe("#mergeLeft()", () => {
@@ -185,6 +185,45 @@ describe("utils", () => {
 
       expect(result.sequence.escaped).to.equal(expectedSequence);
       expect(writeSpy.calledWith(expectedSequence)).to.be.true;
+    });
+  });
+
+  describe("#getCommonStartingSubstring()", () => {
+    it("Should return null if given an empty array", () => {
+      expect(getCommonStartingSubstring([])).to.be.null;
+    });
+
+    it("Should return the correct common substring provided a list of strings", () => {
+      expect(
+        getCommonStartingSubstring([
+          "interspecies",
+          "interstelar",
+          "interstate",
+          "interesting",
+          "interoperating",
+        ])
+      ).to.equal("inter");
+    });
+
+    it("Should short circuit if it finds a common substring, even if another one matches almost all inputs", () => {
+      expect(
+        getCommonStartingSubstring([
+          "interspecies",
+          "interstelar",
+          "interstate",
+          "interesting",
+          "interoperating",
+          "intolerant",
+        ])
+      ).to.equal("int");
+    });
+
+    it("Should return the only string in the list if only a single string was passed in", () => {
+      expect(getCommonStartingSubstring(["Test"])).to.equal("Test");
+    });
+
+    it("Should return null if no common starting substrings match", () => {
+      expect(getCommonStartingSubstring(["abc", "def", "ghi"])).to.be.null;
     });
   });
 });

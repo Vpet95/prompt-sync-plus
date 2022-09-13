@@ -3,7 +3,7 @@ import fs from "fs";
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { Key, ExitCode } from "../dist/types.js";
+import { Key, ExitCode, AutocompleteBehavior } from "../dist/types.js";
 import promptSync from "../dist/index.js";
 
 function createMessageBuffer(str, specialKey = Key.ENTER) {
@@ -21,6 +21,10 @@ function createReadSyncStub(buf) {
   }
 
   return stub;
+}
+
+function createSearchFunction(list) {
+  return (str) => list.filter((item) => item.indexOf(str) === 0);
 }
 
 describe("Prompt Sync Plus", () => {
@@ -118,7 +122,7 @@ describe("Prompt Sync Plus", () => {
 
     const msg = "Good";
     // simulates terminal interrupt signal
-    const msgBuff = createMessageBuffer(msg, 3);
+    const msgBuff = createMessageBuffer(msg, Key.SIGINT);
     readerStub = createReadSyncStub(msgBuff);
 
     const prompt = promptSync();
@@ -149,7 +153,7 @@ describe("Prompt Sync Plus", () => {
 
     const msg = "Good";
     // Enter necessary to exit prompt
-    let msgBuff = createMessageBuffer("", [4, Key.ENTER]);
+    let msgBuff = createMessageBuffer("", [Key.EOT, Key.ENTER]);
     readerStub = createReadSyncStub(msgBuff);
 
     const prompt = promptSync();
@@ -187,5 +191,53 @@ describe("Prompt Sync Plus", () => {
 
     expect(exitStub.calledWith(0)).to.be.true;
     expect(writeSpy.calledWith("exit\n")).to.be.true;
+  });
+
+  // this is common behavior to all autocomplete types, so we need to test them all
+  it("Should print tab if no strings match the autocomplete search", () => {
+    writeSpy = sinon.spy(process.stdout, "write");
+
+    let msgBuff = createMessageBuffer("C", [Key.TAB, Key.ENTER]);
+    readerStub = createReadSyncStub(msgBuff);
+
+    const searchFn = createSearchFunction(["abc", "123", "do re mi"]);
+
+    const prompt = promptSync();
+
+    let result = prompt("Test: ", null, {
+      autocomplete: {
+        searchFn,
+        behavior: AutocompleteBehavior.CYCLE,
+      },
+    });
+
+    expect(result).to.equal("C\t");
+    expect(writeSpy.calledWith("\t")).to.be.true;
+
+    writeSpy.resetHistory();
+    readerStub.resetHistory();
+
+    result = prompt("Test: ", null, {
+      autocomplete: {
+        searchFn,
+        behavior: AutocompleteBehavior.SUGGEST,
+      },
+    });
+
+    expect(result).to.equal("C\t");
+    expect(writeSpy.calledWith("\t")).to.be.true;
+
+    writeSpy.resetHistory();
+    readerStub.resetHistory();
+
+    result = prompt("Test: ", null, {
+      autocomplete: {
+        searchFn,
+        behavior: AutocompleteBehavior.HYBRID,
+      },
+    });
+
+    expect(result).to.equal("C\t");
+    expect(writeSpy.calledWith("\t")).to.be.true;
   });
 });
