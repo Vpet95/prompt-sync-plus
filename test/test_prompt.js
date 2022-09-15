@@ -6,6 +6,8 @@ import sinon from "sinon";
 import { Key, ExitCode, AutocompleteBehavior } from "../dist/types.js";
 import promptSync from "../dist/index.js";
 
+import stripAnsi from "strip-ansi";
+
 function createMessageBuffer(str, specialKey = Key.ENTER) {
   return Buffer.from([...str].map((c) => c.charCodeAt(0)).concat(specialKey));
 }
@@ -239,5 +241,64 @@ describe("Prompt Sync Plus", () => {
 
     expect(result).to.equal("C\t");
     expect(writeSpy.calledWith("\t")).to.be.true;
+  });
+
+  it("Should cycle through all of the matching results", () => {
+    writeSpy = sinon.spy(process.stdout, "write");
+
+    let msgBuff = createMessageBuffer("C", [
+      Key.TAB,
+      Key.TAB,
+      Key.TAB,
+      Key.TAB,
+      Key.ENTER,
+    ]);
+    readerStub = createReadSyncStub(msgBuff);
+
+    const searchFn = createSearchFunction([
+      "CAT",
+      "CRANBERRY",
+      "FOO",
+      "BAR",
+      "CORE",
+    ]);
+
+    const prompt = promptSync();
+
+    let result = prompt("Test: ", null, {
+      autocomplete: {
+        searchFn,
+        behavior: AutocompleteBehavior.CYCLE,
+      },
+    });
+
+    expect(
+      writeSpy.getCall(4).args.find((arg) => arg.includes("CAT")),
+      "Should be CAT"
+    ).to.not.be.undefined;
+    expect(
+      writeSpy.getCall(5).args.find((arg) => arg.includes("CRANBERRY")),
+      "Should be CRANBERRY"
+    ).to.not.be.undefined;
+    expect(
+      writeSpy.getCall(6).args.find((arg) => arg.includes("CORE")),
+      "Should be CORE"
+    ).to.not.be.undefined;
+    expect(
+      writeSpy.getCall(7).args.find((arg) => arg.includes("CAT")),
+      "Should be CAT (again)"
+    ).to.not.be.undefined;
+
+    // let info = "";
+    // for (let i = 0; i < writeSpy.callCount; ++i) {
+    //   info += `call ${i + 1}: [${stripAnsi(
+    //     writeSpy.getCall(i).args.join(", ")
+    //   )}]\n`;
+    // }
+
+    // console.log(`Call info:\n${info}`);
+
+    writeSpy.resetHistory();
+    readerStub.resetHistory();
   });
 });
