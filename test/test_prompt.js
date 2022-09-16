@@ -1,14 +1,20 @@
-import fs, { write } from "fs";
+import fs from "fs";
 
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { Key, ExitCode, AutocompleteBehavior } from "../dist/types.js";
-import promptSync from "../dist/index.js";
+import {
+  Key,
+  ExitCode,
+  AutocompleteBehavior,
+  TermEscapeSequence,
+} from "../dist/types.js";
+import promptSync, { setDebug } from "../dist/index.js";
 
 import stripAnsi from "strip-ansi";
+import promptSyncHistory from "prompt-sync-history";
 
-function createMessageBuffer(str, specialKey = Key.ENTER) {
+function createMessageBuffer(str, specialKey = [Key.ENTER]) {
   return Buffer.from([...str].map((c) => c.charCodeAt(0)).concat(specialKey));
 }
 
@@ -36,13 +42,20 @@ function wasCalledWithSubstring(spy, sub) {
   return false;
 }
 
-function createReadSyncStub(buf) {
+function createReadSyncStub(buf, useLength = false) {
   const stub = sinon.stub(fs, "readSync");
 
   for (const pair of buf.entries()) {
     stub.onCall(pair[0]).callsFake((_, buffer, __) => {
-      buffer[0] = pair[1];
-      return 1;
+      if (typeof pair[1] === "number") {
+        buffer[0] = pair[1];
+        return 1;
+      }
+
+      if (useLength) buffer.write(pair[1]);
+      else buffer[0] = pair[1];
+
+      return useLength ? pair[1].length : 1;
     });
   }
 
@@ -58,6 +71,8 @@ describe("Prompt Sync Plus", () => {
   let closerStub = null;
   let writeSpy = null;
   let exitStub = null;
+  let readFileStub = null;
+  let writeFileStub = null;
 
   // this is ok - Mocha only runs multiple test modules in paralell - tests within
   // individual files are run synchronously
@@ -84,6 +99,16 @@ describe("Prompt Sync Plus", () => {
     if (exitStub !== null) {
       exitStub.resetHistory();
       exitStub.restore();
+    }
+
+    if (readFileStub !== null) {
+      readFileStub.resetHistory();
+      readFileStub.restore;
+    }
+
+    if (writeFileStub !== null) {
+      writeFileStub.resetHistory();
+      writeFileStub.restore();
     }
   });
 
@@ -503,5 +528,61 @@ describe("Prompt Sync Plus", () => {
         "interesting     interoperating    intolerant"
       )
     );
+  });
+
+  it("Should save input history and be able to cycle through it on up and down arrow keys", () => {
+    readFileStub = sinon.stub(fs, "readFileSync").throws(); // file doesn't exist
+    writeFileStub = sinon.stub(fs, "writeFileSync");
+
+    writeSpy = sinon.spy(process.stdout, "write");
+
+    let msgBuff = createMessageBuffer("Good", [Key.ENTER]);
+    readerStub = createReadSyncStub(msgBuff);
+
+    const history = promptSyncHistory("test-hist-file.txt");
+
+    const prompt = promptSync({
+      history,
+    });
+
+    let result = prompt("How are you? ");
+
+    expect(result).to.equal("Good");
+    readerStub.resetHistory();
+    readerStub.restore();
+
+    msgBuff = createMessageBuffer("Yes");
+    readerStub = createReadSyncStub(msgBuff);
+
+    result = prompt("Are you sure? ");
+
+    expect(result).to.equal("Yes");
+    readerStub.resetHistory();
+    readerStub.restore();
+
+    // Check handling of up arrow limit
+    msgBuff = createMessageBuffer("Definitely", [
+      `${TermEscapeSequence}[A`, // "Yes"
+      `${TermEscapeSequence}[A`, // "Good"
+      `${TermEscapeSequence}[A`, // still "Good"
+      `${TermEscapeSequence}[B`, // "Yes"
+      `${TermEscapeSequence}[B`, // "Definitely"
+      Key.ENTER,
+    ]);
+    readerStub = createReadSyncStub(msgBuff, true);
+
+    setDebug(true);
+    result = prompt("Are reeeeeaaallly sure?? ");
+
+    expect(result).to.equal("Definitely");
+    expect(wasCalledWithSubstring(writeSpy, "Are reeeeeaaallly sure?? Yes"));
+    expect(wasCalledWithSubstring(writeSpy, "Are reeeeeaaallly sure?? Good"));
+    expect(
+      wasCalledWithSubstring(writeSpy, "Are reeeeeaaallly sure?? Definitely")
+    );
+
+    expect(writeFileStub.called).to.be.false;
+    history.save();
+    expect(writeFileStub.called).to.be.true;
   });
 });

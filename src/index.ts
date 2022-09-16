@@ -22,6 +22,12 @@ import {
   getCommonStartingSubstring,
 } from "./utils.js";
 
+let debug = false;
+
+export const setDebug = (value: boolean) => {
+  debug = value;
+};
+
 export default function PromptSync(config: Config | undefined) {
   const globalConfig = config
     ? mergeLeft(mergeLeft(EMPTY_CONFIG, config), DEFAULT_CONFIG)
@@ -214,10 +220,13 @@ export default function PromptSync(config: Config | undefined) {
 
     while (true) {
       const countBytesRead = fs.readSync(fileDescriptor, buf, 0, 3, null);
+      if (debug) debugger;
 
       if (countBytesRead > 1) {
         // received a control sequence
-        switch (buf.toString()) {
+        const sequence = buf.toString();
+
+        switch (sequence) {
           case move().up.sequence.escaped:
             if (masked) break;
             if (!history) break;
@@ -264,7 +273,7 @@ export default function PromptSync(config: Config | undefined) {
             break;
           case move().left.sequence.escaped:
             if (masked) break;
-            var before = insertPosition;
+            const before = insertPosition;
             insertPosition = --insertPosition < 0 ? 0 : insertPosition;
             if (before - insertPosition) move().left.exec();
             break;
