@@ -1,4 +1,4 @@
-import fs from "fs";
+import fs, { write } from "fs";
 
 import { expect } from "chai";
 import sinon from "sinon";
@@ -10,6 +10,30 @@ import stripAnsi from "strip-ansi";
 
 function createMessageBuffer(str, specialKey = Key.ENTER) {
   return Buffer.from([...str].map((c) => c.charCodeAt(0)).concat(specialKey));
+}
+
+function dumpArgs(spy) {
+  let output = "";
+
+  for (let i = 0; i < spy.callCount; ++i) {
+    output += `Call (${i}): ${spy
+      .getCall(i)
+      .args.map((arg) => `[${stripAnsi(arg)}]`)
+      .join(", ")}\n`;
+  }
+
+  process.stdout.write(output);
+}
+
+// We only really care to test the visible portion of any output to write
+// so we need to manually loop through the calls and look at each argument for the given substring
+function wasCalledWithSubstring(spy, sub) {
+  for (let i = 0; i < spy.callCount; ++i) {
+    if (spy.getCall(i).args.find((arg) => arg.includes(sub)) !== undefined)
+      return true;
+  }
+
+  return false;
 }
 
 function createReadSyncStub(buf) {
@@ -289,16 +313,195 @@ describe("Prompt Sync Plus", () => {
       "Should be CAT (again)"
     ).to.not.be.undefined;
 
-    // let info = "";
-    // for (let i = 0; i < writeSpy.callCount; ++i) {
-    //   info += `call ${i + 1}: [${stripAnsi(
-    //     writeSpy.getCall(i).args.join(", ")
-    //   )}]\n`;
-    // }
-
-    // console.log(`Call info:\n${info}`);
+    expect(result).to.equal("CAT");
 
     writeSpy.resetHistory();
     readerStub.resetHistory();
+  });
+
+  it("Should consistently return the only matching string on multiple TAB presses", () => {
+    writeSpy = sinon.spy(process.stdout, "write");
+
+    let msgBuff = createMessageBuffer("C", [
+      Key.TAB,
+      Key.TAB,
+      Key.TAB,
+      Key.TAB,
+      Key.ENTER,
+    ]);
+    readerStub = createReadSyncStub(msgBuff);
+
+    const searchFn = createSearchFunction(["CAT", "BAT", "MAT", "RAT"]);
+
+    const prompt = promptSync();
+
+    let result = prompt("Test: ", null, {
+      autocomplete: {
+        searchFn,
+        behavior: AutocompleteBehavior.CYCLE,
+      },
+    });
+
+    expect(result).to.equal("CAT");
+  });
+
+  it("Should display a list of autocomplete suggestions when behavior is set to SUGGEST", () => {
+    writeSpy = sinon.spy(process.stdout, "write");
+
+    let msgBuff = createMessageBuffer("C", [Key.TAB, Key.ENTER]);
+    readerStub = createReadSyncStub(msgBuff);
+
+    const searchFn = createSearchFunction([
+      "CAT",
+      "CRANBERRY",
+      "FOO",
+      "BAR",
+      "CORE",
+    ]);
+
+    const prompt = promptSync();
+
+    let result = prompt("Test: ", null, {
+      autocomplete: {
+        searchFn,
+        behavior: AutocompleteBehavior.SUGGEST,
+      },
+    });
+
+    // SUGGEST doesn't auto-fill anything
+    expect(result).to.equal("C");
+    expect(wasCalledWithSubstring(writeSpy, "Test: C\n"));
+    expect(wasCalledWithSubstring(writeSpy, "CAT    CRANBERRY    CORE"));
+  });
+
+  it("Should fill the input line with a common substring, in addition to displaying a list of suggestions", () => {
+    writeSpy = sinon.spy(process.stdout, "write");
+
+    let msgBuff = createMessageBuffer("i", [
+      Key.TAB, // should fill to 'int'
+      "e".charCodeAt(0),
+      Key.TAB, // should fill to 'inter'
+      Key.ENTER,
+    ]);
+    readerStub = createReadSyncStub(msgBuff);
+
+    const searchFn = createSearchFunction([
+      "interspecies",
+      "interstelar",
+      "interstate",
+      "interesting",
+      "interoperating",
+      "intolerant",
+    ]);
+
+    const prompt = promptSync();
+
+    let result = prompt("Test: ", null, {
+      autocomplete: {
+        searchFn,
+        behavior: AutocompleteBehavior.SUGGEST,
+        fillCommonSubstring: true,
+      },
+    });
+
+    // SUGGEST doesn't auto-fill anything
+    expect(result).to.equal("inter");
+    expect(wasCalledWithSubstring(writeSpy, "Test: int\n"));
+    expect(wasCalledWithSubstring(writeSpy, "Test: inter\n"));
+    expect(
+      wasCalledWithSubstring(
+        writeSpy,
+        "interspecies    interstelar       interstate"
+      )
+    );
+    expect(
+      wasCalledWithSubstring(
+        writeSpy,
+        "interesting     interoperating                \n"
+      )
+    );
+  });
+
+  it("Should fill in the entire result string if it's the only result", () => {
+    writeSpy = sinon.spy(process.stdout, "write");
+
+    let msgBuff = createMessageBuffer("i", [
+      Key.TAB, // should fill to 'int'
+      "o".charCodeAt(0),
+      Key.TAB, // should fill to 'intolerant'
+      Key.ENTER,
+    ]);
+    readerStub = createReadSyncStub(msgBuff);
+
+    const searchFn = createSearchFunction([
+      "interspecies",
+      "interstelar",
+      "interstate",
+      "interesting",
+      "interoperating",
+      "intolerant",
+    ]);
+
+    const prompt = promptSync();
+
+    let result = prompt("Test: ", null, {
+      autocomplete: {
+        searchFn,
+        behavior: AutocompleteBehavior.SUGGEST,
+        fillCommonSubstring: true,
+      },
+    });
+
+    // SUGGEST doesn't auto-fill anything
+    expect(result).to.equal("intolerant");
+    expect(wasCalledWithSubstring(writeSpy, "Test: int\n"));
+    expect(wasCalledWithSubstring(writeSpy, "Test: intolerant\n"));
+  });
+
+  it("Should display autocomplete suggestions as well as cycle through them", () => {
+    writeSpy = sinon.spy(process.stdout, "write");
+
+    let msgBuff = createMessageBuffer("i", [
+      Key.TAB,
+      Key.TAB,
+      Key.TAB,
+      Key.ENTER,
+    ]);
+    readerStub = createReadSyncStub(msgBuff);
+
+    const searchFn = createSearchFunction([
+      "interspecies",
+      "interstelar",
+      "interstate",
+      "interesting",
+      "interoperating",
+      "intolerant",
+    ]);
+
+    const prompt = promptSync();
+
+    let result = prompt("Test: ", null, {
+      autocomplete: {
+        searchFn,
+        behavior: AutocompleteBehavior.HYBRID,
+      },
+    });
+
+    expect(result).to.equal("interstate");
+    expect(wasCalledWithSubstring(writeSpy, "Test: interspecies\n"));
+    expect(wasCalledWithSubstring(writeSpy, "Test: interstelar\n"));
+    expect(wasCalledWithSubstring(writeSpy, "Test: interstate\n"));
+    expect(
+      wasCalledWithSubstring(
+        writeSpy,
+        "interspecies    interstelar       interstate"
+      )
+    );
+    expect(
+      wasCalledWithSubstring(
+        writeSpy,
+        "interesting     interoperating    intolerant"
+      )
+    );
   });
 });
