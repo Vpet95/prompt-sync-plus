@@ -3,12 +3,8 @@ import fs from "fs";
 import { expect } from "chai";
 import sinon from "sinon";
 
-import {
-  Key,
-  ExitCode,
-  AutocompleteBehavior,
-  TermEscapeSequence,
-} from "../dist/types.js";
+import { Key, ExitCode, AutocompleteBehavior } from "../dist/types.js";
+import { move } from "../dist/utils.js";
 import promptSync, { setDebug } from "../dist/index.js";
 
 import stripAnsi from "strip-ansi";
@@ -560,21 +556,34 @@ describe("Prompt Sync Plus", () => {
     readerStub.resetHistory();
     readerStub.restore();
 
-    // Check handling of up arrow limit
-    msgBuff = createMessageBuffer("Definitely", [
-      `${TermEscapeSequence}[A`, // "Yes"
-      `${TermEscapeSequence}[A`, // "Good"
-      `${TermEscapeSequence}[A`, // still "Good"
-      `${TermEscapeSequence}[B`, // "Yes"
-      `${TermEscapeSequence}[B`, // "Definitely"
-      Key.ENTER,
-    ]);
-    readerStub = createReadSyncStub(msgBuff, true);
+    const up = move().up.sequence.escaped;
+    const down = move().down.sequence.escaped;
 
-    setDebug(true);
+    const customMsg = [
+      ..."Definitely".split(""),
+      up, // "Yes"
+      up, // "Good"
+      up, // Repeat "Good"
+      down, // "Yes"
+      String.fromCharCode(Key.ENTER),
+    ];
+
+    readerStub = sinon.stub(fs, "readSync");
+    customMsg.forEach((str, index) => {
+      readerStub.onCall(index).callsFake((_, buffer, __) => {
+        if (str.length === 0) {
+          buffer[0] = str.charCodeAt(0);
+          return 1;
+        } else {
+          buffer.write(str);
+          return str.length;
+        }
+      });
+    });
+
     result = prompt("Are reeeeeaaallly sure?? ");
 
-    expect(result).to.equal("Definitely");
+    expect(result).to.equal("Yes");
     expect(wasCalledWithSubstring(writeSpy, "Are reeeeeaaallly sure?? Yes"));
     expect(wasCalledWithSubstring(writeSpy, "Are reeeeeaaallly sure?? Good"));
     expect(
@@ -584,5 +593,47 @@ describe("Prompt Sync Plus", () => {
     expect(writeFileStub.called).to.be.false;
     history.save();
     expect(writeFileStub.called).to.be.true;
+  });
+
+  it("Should handle left and right arrow keys", () => {
+    readerStub = sinon.stub(fs, "readSync");
+    const l = move().left.sequence.escaped;
+    const r = move().right.sequence.escaped;
+
+    const customMsg = [
+      "a",
+      "b",
+      "c",
+      l,
+      l,
+      l,
+      "x",
+      "y",
+      "z",
+      r,
+      r,
+      r,
+      "1",
+      "2",
+      "3",
+      String.fromCharCode(Key.ENTER),
+    ];
+
+    customMsg.forEach((str, index) => {
+      readerStub.onCall(index).callsFake((_, buffer, __) => {
+        if (str.length === 0) {
+          buffer[0] = str.charCodeAt(0);
+          return 1;
+        } else {
+          buffer.write(str);
+          return str.length;
+        }
+      });
+    });
+
+    const prompt = promptSync();
+    const result = prompt("Message: ");
+
+    expect(result).to.equal("xyzabc123");
   });
 });
