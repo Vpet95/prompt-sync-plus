@@ -74,16 +74,16 @@ describe("Prompt Sync Plus", () => {
   // individual files are run synchronously
   let readerStub = null;
 
-  before("Sinon setup", () => {
-    openerStub = sinon.stub(fs, "openSync").returns(0);
-    closerStub = sinon.stub(fs, "closeSync").returns(0);
-  });
+  before("Sinon setup", () => {});
 
   beforeEach("Cleanup prior to each test", () => {
     if (readerStub !== null) {
       readerStub.reset(); // clean up behavior and history
       readerStub.restore(); // un-wrap stub
     }
+
+    openerStub = sinon.stub(fs, "openSync").returns(0);
+    closerStub = sinon.stub(fs, "closeSync").returns(0);
   });
 
   afterEach(() => {
@@ -105,6 +105,16 @@ describe("Prompt Sync Plus", () => {
     if (writeFileStub !== null) {
       writeFileStub.resetHistory();
       writeFileStub.restore();
+    }
+
+    if (openerStub !== null) {
+      openerStub.resetHistory();
+      openerStub.restore();
+    }
+
+    if (closerStub !== null) {
+      closerStub.resetHistory();
+      closerStub.restore();
     }
   });
 
