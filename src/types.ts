@@ -171,9 +171,12 @@ export type Config = {
     // determines when autocompletion activates
     completeOn: CompleteOnOption;
     // determines whether the behavior of autocomplete SUGGEST should fill the given input with the common substring of results
-    fillCommonSubstring: boolean;
+    fill: boolean;
     // the search function used to generate a list of possible completions given a query string
     searchFn?: (query: string) => string[];
+    // determines whether autocomplete is 'sticky' - i.e. whether autocomplete occurs on every
+    // key stroke or only when triggerKeyCode is hit
+    sticky: boolean;
     // number of columns to display autocomplete suggestions in (if behavior is SUGGEST or HYBRID)
     suggestColCount: number;
     // determines which key activates autocompletion
@@ -199,8 +202,9 @@ export const ConfigSchema = Joi.object({
     completeOn: Joi.string()
       .allow(...Object.values(CompleteOnOption))
       .insensitive(),
-    fillCommonSubstring: Joi.boolean(),
+    fill: Joi.boolean(),
     searchFn: Joi.function().arity(1),
+    sticky: Joi.boolean(),
     suggestColCount: Joi.number().min(1),
     triggerKeyCode: Joi.number().allow(...Object.values(Key)),
   }),
@@ -224,8 +228,9 @@ export const DEFAULT_CONFIG: Config = {
   autocomplete: {
     behavior: AutocompleteBehavior.CYCLE,
     completeOn: CompleteOnOption.KEYPRESS,
-    fillCommonSubstring: false,
+    fill: false,
     searchFn: (_: string) => [],
+    sticky: false,
     suggestColCount: 3,
     triggerKeyCode: Key.TAB,
   },
@@ -239,8 +244,9 @@ export const EMPTY_CONFIG: Config = {
   autocomplete: {
     behavior: undefined,
     completeOn: undefined,
-    fillCommonSubstring: undefined,
+    fill: undefined,
     searchFn: undefined,
+    sticky: undefined,
     suggestColCount: undefined,
     triggerKeyCode: undefined,
   },

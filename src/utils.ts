@@ -101,7 +101,7 @@ export const tablify = (autocompleteMatches: string[], colCount: number) => {
   const result: string[][] = [];
   const currentRow: string[] = [];
 
-  if (autocompleteMatches.length == 0) return null;
+  if (autocompleteMatches.length == 0) return { output: "", rowCount: 0 };
 
   autocompleteMatches.forEach((str) => {
     currentRow.push(str);
@@ -139,11 +139,11 @@ export const tablify = (autocompleteMatches: string[], colCount: number) => {
 
 // credit to kennebec, et. al.
 // https://stackoverflow.com/a/1917041/3578493
-export const getCommonStartingSubstring = (autocompleteMatches: string[]) => {
-  if (autocompleteMatches.length === 0) return null;
-  if (autocompleteMatches.length === 1) return autocompleteMatches[0];
+export const getCommonStartingSubstring = (list: string[]) => {
+  if (list.length === 0) return null;
+  if (list.length === 1) return list[0];
 
-  const sortedMatches = autocompleteMatches.concat().sort();
+  const sortedMatches = list.concat().sort();
   const first = sortedMatches[0];
   const last = sortedMatches.slice(-1)[0];
   const minLength = Math.min(first.length, last.length);

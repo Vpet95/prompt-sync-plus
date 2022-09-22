@@ -22,12 +22,6 @@ import {
   getCommonStartingSubstring,
 } from "./utils.js";
 
-let debug = false;
-
-export const setDebug = (value: boolean) => {
-  debug = value;
-};
-
 export default function PromptSync(config: Config | undefined) {
   const globalConfig = config
     ? mergeLeft(mergeLeft(EMPTY_CONFIG, config), DEFAULT_CONFIG)
@@ -91,6 +85,15 @@ export default function PromptSync(config: Config | undefined) {
 
     let autocompleteCycleIndex = 0;
 
+    function storeInput(newChar: number) {
+      userInput =
+        userInput.slice(0, insertPosition) +
+        String.fromCharCode(newChar) +
+        userInput.slice(insertPosition);
+
+      insertPosition++;
+    }
+
     function autocompleteCycle() {
       // first TAB hit, save off original input
       if (cycleSearchTerm.length === 0) cycleSearchTerm = userInput;
@@ -117,15 +120,20 @@ export default function PromptSync(config: Config | undefined) {
       insertPosition = userInput.length;
     }
 
-    function autocompleteSuggest() {
+    function autocompleteSuggest(isBackspace: boolean) {
       const searchResults = promptConfig.autocomplete.searchFn(userInput);
 
       if (searchResults.length === 0) {
-        userInput += "\t";
-        insertPosition = userInput.length;
-        process.stdout.write("\t");
+        if (promptConfig.autocomplete.sticky) {
+          process.stdout.write(concat("\r", eraseLine(), ask, userInput));
+        } else {
+          userInput += "\t";
+          insertPosition = userInput.length;
+          process.stdout.write("\t");
+        }
+
         return 0;
-      } else if (searchResults.length === 1) {
+      } else if (searchResults.length === 1 && !isBackspace) {
         userInput = searchResults[0];
         insertPosition = userInput.length;
         process.stdout.write(concat("\r", eraseLine(), ask, userInput));
@@ -134,7 +142,7 @@ export default function PromptSync(config: Config | undefined) {
         return 0;
       }
 
-      if (promptConfig.autocomplete.fillCommonSubstring) {
+      if (!isBackspace && promptConfig.autocomplete.fill) {
         const commonSubstring = getCommonStartingSubstring(searchResults);
 
         if (commonSubstring && commonSubstring !== userInput) {
@@ -220,7 +228,6 @@ export default function PromptSync(config: Config | undefined) {
 
     while (true) {
       const countBytesRead = fs.readSync(fileDescriptor, buf, 0, 3, null);
-      if (debug) debugger;
 
       if (countBytesRead > 1) {
         // received a control sequence
@@ -308,6 +315,19 @@ export default function PromptSync(config: Config | undefined) {
       // if it is not a control character seq, assume only one character is read
       firstCharOfInput = buf[countBytesRead - 1];
 
+      const isAutocompleteTrigger =
+        firstCharOfInput === promptConfig.autocomplete?.triggerKeyCode;
+      const isStickyOnly =
+        !isAutocompleteTrigger && promptConfig.autocomplete.sticky;
+      const isOutOfBounds =
+        firstCharOfInput != Key.TAB &&
+        (firstCharOfInput < Key.SPACE || firstCharOfInput > Key.BACKSPACE);
+
+      const isBackspace =
+        firstCharOfInput === Key.BACKSPACE ||
+        (process.platform === "win32" &&
+          firstCharOfInput === Key.WIN_BACKSPACE);
+
       // ^C
       if (firstCharOfInput === Key.SIGINT) {
         process.stdout.write("^C\n");
@@ -339,19 +359,44 @@ export default function PromptSync(config: Config | undefined) {
         break;
       }
 
+      if (isBackspace) {
+        if (!insertPosition) continue;
+
+        userInput =
+          userInput.slice(0, insertPosition - 1) +
+          userInput.slice(insertPosition);
+        insertPosition--;
+
+        move().left.exec();
+      }
+
+      if (isOutOfBounds) continue;
+
       if (
         promptConfig.autocomplete?.searchFn &&
-        firstCharOfInput === promptConfig.autocomplete?.triggerKeyCode
+        (isAutocompleteTrigger || promptConfig.autocomplete.sticky)
       ) {
         const currentUserInput = userInput;
         const prevRowsToClear = numRowsToClear;
+
+        if (isStickyOnly) {
+          if (!isBackspace) {
+            // need to store off current input before we process
+            storeInput(firstCharOfInput);
+            move().right.exec();
+          }
+
+          clearSuggestTable(numRowsToClear);
+        }
+
+        if (userInput.length === 0) continue;
 
         switch (promptConfig.autocomplete?.behavior?.toLowerCase()) {
           case AutocompleteBehavior.CYCLE:
             autocompleteCycle();
             break;
           case AutocompleteBehavior.SUGGEST:
-            numRowsToClear = autocompleteSuggest();
+            numRowsToClear = autocompleteSuggest(isBackspace);
 
             if (numRowsToClear === 0 && currentUserInput !== userInput)
               clearSuggestTable(prevRowsToClear);
@@ -365,38 +410,15 @@ export default function PromptSync(config: Config | undefined) {
 
             break;
         }
-      } else {
-        // user entered anything other than TAB; reset from last use of autocomplete
-        cycleSearchTerm = "";
-        // reset cycle - next time user hits tab might yield a different result list
-        autocompleteCycleIndex = 0;
 
-        clearSuggestTable(numRowsToClear);
+        continue;
       }
 
-      if (
-        firstCharOfInput === Key.BACKSPACE ||
-        (process.platform === "win32" && firstCharOfInput === Key.WIN_BACKSPACE)
-      ) {
-        if (!insertPosition) continue;
+      cycleSearchTerm = "";
+      autocompleteCycleIndex = 0;
+      clearSuggestTable(numRowsToClear);
 
-        userInput =
-          userInput.slice(0, insertPosition - 1) +
-          userInput.slice(insertPosition);
-        insertPosition--;
-
-        move(2).left.exec();
-      } else {
-        if (firstCharOfInput < Key.SPACE || firstCharOfInput >= Key.BACKSPACE)
-          continue;
-
-        userInput =
-          userInput.slice(0, insertPosition) +
-          String.fromCharCode(firstCharOfInput) +
-          userInput.slice(insertPosition);
-
-        insertPosition++;
-      }
+      if (!isBackspace) storeInput(firstCharOfInput);
 
       promptPrint(masked, ask, promptConfig.echo, userInput, insertPosition);
     }

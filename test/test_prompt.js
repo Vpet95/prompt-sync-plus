@@ -431,7 +431,7 @@ describe("Prompt Sync Plus", () => {
       autocomplete: {
         searchFn,
         behavior: AutocompleteBehavior.SUGGEST,
-        fillCommonSubstring: true,
+        fill: true,
       },
     });
 
@@ -479,7 +479,7 @@ describe("Prompt Sync Plus", () => {
       autocomplete: {
         searchFn,
         behavior: AutocompleteBehavior.SUGGEST,
-        fillCommonSubstring: true,
+        fill: true,
       },
     });
 
@@ -487,6 +487,50 @@ describe("Prompt Sync Plus", () => {
     expect(result).to.equal("intolerant");
     expect(wasCalledWithSubstring(writeSpy, "Test: int\n"));
     expect(wasCalledWithSubstring(writeSpy, "Test: intolerant\n"));
+  });
+
+  it("Should activate autocomplete suggestions on any keystroke if sticky activated", () => {
+    writeSpy = sinon.spy(process.stdout, "write");
+
+    let msgBuff = createMessageBuffer("ieo", [Key.ENTER]);
+    readerStub = createReadSyncStub(msgBuff);
+
+    const searchFn = createSearchFunction([
+      "interspecies",
+      "interstelar",
+      "interstate",
+      "interesting",
+      "interoperating",
+      "intolerant",
+    ]);
+
+    const prompt = promptSync();
+
+    let result = prompt("Test: ", null, {
+      autocomplete: {
+        searchFn,
+        behavior: AutocompleteBehavior.SUGGEST,
+        fill: true,
+        sticky: true,
+      },
+    });
+
+    expect(result).to.equal("interoperating");
+    expect(wasCalledWithSubstring(writeSpy, "Test: int\n"));
+    expect(wasCalledWithSubstring(writeSpy, "Test: inter\n"));
+    expect(wasCalledWithSubstring(writeSpy, "Test: interoperating\n"));
+    expect(
+      wasCalledWithSubstring(
+        writeSpy,
+        "interesting     interoperating    intolerant\n"
+      )
+    );
+    expect(
+      wasCalledWithSubstring(
+        writeSpy,
+        "interesting     interoperating                \n"
+      )
+    );
   });
 
   it("Should display autocomplete suggestions as well as cycle through them", () => {

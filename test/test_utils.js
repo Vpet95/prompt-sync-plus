@@ -2,7 +2,12 @@ import { expect } from "chai";
 import sinon from "sinon";
 
 import { TermEscapeSequence, TermInputSequence } from "../dist/types.js";
-import { mergeLeft, move, getCommonStartingSubstring } from "../dist/utils.js";
+import {
+  mergeLeft,
+  move,
+  getCommonStartingSubstring,
+  tablify,
+} from "../dist/utils.js";
 
 describe("utils", () => {
   describe("#mergeLeft()", () => {
@@ -224,6 +229,17 @@ describe("utils", () => {
 
     it("Should return null if no common starting substrings match", () => {
       expect(getCommonStartingSubstring(["abc", "def", "ghi"])).to.be.null;
+    });
+
+    it("Should work on lists with only duplicate strings", () => {
+      expect(getCommonStartingSubstring(["hello", "hello"])).to.equal("hello");
+    });
+  });
+
+  describe("#tablify()", () => {
+    // only testing functionality not already tested in test_prompt.js, based on code coverage output
+    it("Should return a default empty object if given an empty list", () => {
+      expect(tablify([])).to.deep.equal({ output: "", rowCount: 0 });
     });
   });
 });
