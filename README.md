@@ -1,118 +1,297 @@
-# SYNOPSIS
-A sync prompt for node. very simple. no C++ bindings and no bash scripts.
+# prompt-sync-plus
 
-Works on Linux, OS X and Windows.
+An easy-to-use, synchronous prompt for Node.js based on the widely-adopted [prompt-sync](https://github.com/heapwolf/prompt-sync). The intent behind this project is to expand upon the original work of heapwolf, et. al., clean up, modernize, and patch the library to fix several existing issues and add some additional features. This library should be a 1:1 drop-in for the original and should at minimum require only an install and replacement of existing imports.
 
-# BASIC MODE
-```js
+Changes include:
 
-var prompt = require('prompt-sync')();
-//
-// get input from the user.
-//
-var n = prompt('How many more times? ');
+- A port to ES6 and TypeScript
+- Addition of unit tests with ~90%+ code coverage
+- Some fixes to existing autocomplete behavior
+- Addition of new autocomplete behaviors and configuration options
+- Improved documentation + examples
+
+## Installation
+
+Install via NPM:
+
 ```
-# WITH HISTORY
-
-History is an optional extra, to use simply install the history plugin. 
-
-```sh
-npm install --save prompt-sync-history
+npm install --save prompt-sync-plus
 ```
 
+## Features & Examples
+
+### Basic Example
+
+At minimum, you need to import the library and instantiate the prompt. The entered text is returned directly:
+
 ```js
-var prompt = require('prompt-sync')({
-  history: require('prompt-sync-history')() //open history file
+import prompSyncPlus from "prompt-sync-plus";
+
+const prompt = prompSyncPlus();
+const result = prompt("How are you?");
+
+console.log(`You responded with ${result}`);
+```
+
+<todo - gif>
+
+### Configuration
+
+Prompt settings can be supplied via JSON object globally and/or on a prompt-by-prompt basis. Global settings are supplied when the prompt is instantiated:
+
+```js
+import prompSyncPlus from "prompt-sync-plus";
+
+const prompt = prompSyncPlus({
+  /* your settings here */
 });
-//get some user input
-var input = prompt()
-prompt.history.save() //save history back to file
 ```
 
-See the [prompt-sync-history](http://npm.im/prompt-sync-history) module
-for options, or fork it for customized behaviour. 
-
-# API
-
-## `require('prompt-sync')(config) => prompt` 
-
-Returns an instance of the `prompt` function.
-Takes `config` option with the following possible properties
-
-`sigint`: Default is `false`. A ^C may be pressed during the input process to abort the text entry. If sigint it `false`, prompt returns `null`. If sigint is `true` the ^C will be handled in the traditional way: as a SIGINT signal causing process to exit with code 130.
-
-`eot`: Default is `false`. A ^D pressed as the first character of an input line causes prompt-sync to echo `exit` and exit the process with code 0.
-
-`autocomplete`: A completer function that will be called when user enters TAB to allow for autocomplete. It takes a string as an argument an returns an array of strings that are possible matches for completion. An empty array is returned if there are no matches.
-
-`history`: Takes an object that supplies a "history interface", see [prompt-sync-history](http://npm.im/prompt-sync-history) for an example.
-
-## `prompt(ask, value, opts)`
-
-`ask` is the label of the prompt, `value` is the default value
-in absence of a response. 
-
-The `opts` argument can also be in the first or second parameter position.
-
-Opts can have the following properties
-
-`echo`: Default is `'*'`. If set the password will be masked with the specified character. For hidden input, set echo to `''` (or use `prompt.hide`).
-
-`autocomplete`: Overrides the instance `autocomplete` function to allow for custom 
-autocompletion of a particular prompt.
-
-`value`: Same as the `value` parameter, the default value for the prompt. If `opts`
-is in the third position, this property will *not* overwrite the `value` parameter.
-
-`ask`: Sames as the `value` parameter. The prompt label. If `opts` is not in the first position, the `ask` parameter will *not* be overridden by this property.
-
-## `prompt.hide(ask)`
-
-Convenience method for creating a standard hidden password prompt, 
-this is the same as `prompt(ask, {echo: ''})`
-
-
-# LINE EDITING
-Line editing is enabled in the non-hidden mode. (use up/down arrows for history and backspace and left/right arrows for editing)
-
-History is not set when using hidden mode.
-
-# EXAMPLES
+Prompt-specific settings can be supplied either as the second or third argument to the prompt invocation.
 
 ```js
-  //basic:
-  console.log(require('prompt-sync')()('tell me something about yourself: '))
+const result = prompt("How are you?", {
+  /* your settings here */
+});
+```
 
-  var prompt = require('prompt-sync')({
-    history: require('prompt-sync-history')(),
-    autocomplete: complete(['hello1234', 'he', 'hello', 'hello12', 'hello123456']),
-    sigint: false
-  });
+Or with a default response supplied:
 
-  var value = 'frank';
-  var name = prompt('enter name: ', value);
-  console.log('enter echo * password');
-  var pw = prompt({echo: '*'});
-  var pwb = prompt('enter hidden password (or don\'t): ', {echo: '', value: '*pwb default*'})
-  var pwc = prompt.hide('enter another hidden password: ')
-  var autocompleteTest = prompt('custom autocomplete: ', {
-    autocomplete: complete(['bye1234', 'by', 'bye12', 'bye123456'])
-  });
+```js
+const result = prompt("How are you?", "Good", {
+  /* your settings here */
+});
+```
 
-  prompt.history.save();
+Prompt-specific settings override global settings wherever there is overlap:
 
-  console.log('\nName: %s\nPassword *: %s\nHidden password: %s\nAnother Hidden password: %s', name, pw, pwb, pwc);
-  console.log('autocomplete2: ', autocompleteTest);
+```js
+import prompSyncPlus from "prompt-sync-plus";
 
-  function complete(commands) {
-    return function (str) {
-      var i;
-      var ret = [];
-      for (i=0; i< commands.length; i++) {
-        if (commands[i].indexOf(str) == 0)
-          ret.push(commands[i]);
-      }
-      return ret;
-    };
-  };
+const prompt = prompSyncPlus({ sigint: true });
+
+// overrides sigint behavior established by global setting above
+const result = prompt("How are you?", { sigint: false });
+```
+
+Both methods of configuration take the same JSON schema. See [API]() for a full listing of available settings, or keep scrolling to see examples of various settings in action.
+
+### Supply a default value
+
+A global default value can be supplied via the `defaultResponse` field:
+
+```js
+const prompt = promptSyncPlus({ defaultResponse: "No response" });
+const result = prompt("Some question");
+
+console.log(result): // No response
+```
+
+A prompt-specific default value can be supplied as a second argument to the prompt:
+
+```js
+const result = prompt("How are you?", "Good");
+
+console.log(`You responded with ${result}`); // You responded with Good
+```
+
+<todo - gif>
+
+### Handling sensitive input
+
+For password entry, etc. character input can be obscured via the `echo` field:
+
+```js
+const result = prompt("Password: ", { echo: "*" });
+```
+
+To omit output entirely, supply the empty string to `echo`:
+
+```js
+const result = prompt("Sensitive info: ", { echo: "" });
+```
+
+<todo - gif>
+
+### Handling SIGINT
+
+Handling of SIGINT (Ctrl+C) is configured via the `sigint` boolean field. It determines whether to kill the process and return code 130 (`true`) or gobble up the signal and immediately return `null` from the prompt (`false`). The latter is the default.
+
+```js
+const result = prompt("Enter something or CTRL+C to quit: ", {
+  sigint: true,
+});
+```
+
+<todo - gif>
+
+### Handling end-of-transmission
+
+Handling end-of-transmission (CTRL+D) is configured via the `eot` boolean field. It determines whether to kill the process and return code 0 (`true`) or gobble up the signal and continue prompting (`false`). The latter is the default behavior.
+
+```js
+const result = prompt("Enter something or CTRL+D to kill process:", {
+  eot: true,
+});
+```
+
+<todo - gif>
+
+### Autocompletion
+
+Prompt-sync-plus supports a few different methods for providing users with autocomplete output. Note that this is an area where major changes were made to the original approach of prompt-sync, so your code will likely need some adjustments to use prompt-sync-plus.
+
+At minimum, a search function needs to be passed in to the configuration to enable autocomplete - prompt-sync-plus handles the display and selection of results, but it is up to the caller to decide selection criteria with their own code:
+
+```js
+const listOfWords = [
+  "interspecies",
+  "interstelar",
+  "interstate",
+  "interesting",
+  "interoperating",
+  "intolerant",
+  "introversion",
+  "introspection",
+  "interrogation",
+];
+
+const findWordStart = (str) =>
+  listOfWords.filter((word) => word.indexOf(str) === 0);
+
+// a simple autocomplete algorithm - find word starts
+const result = prompt("Enter a word: ", {
+  autocomplete: {
+    searchFn: findWordStart,
+  },
+});
+```
+
+In the example above, autocomplete can be initiated from the prompt with a TAB key press. There are a few different prompting behaviors outlined below:
+
+#### Cycle
+
+This is the default autocompletion behavior, but can also be configured explicitly via the `behavior` field:
+
+```js
+const result = prompt("Enter a word: ", {
+  autocomplete: {
+    searchFn: findWordStart,
+    behavior: AutocompleteBehavior.CYCLE,
+  },
+});
+```
+
+This behavior cycles through each of the autocomplete results and replaces the input string at the cursor location. At the end of the autocomplete result list, cycle loops around to the start of the list.
+
+<todo - gif>
+
+#### Suggest
+
+This behavior leaves input intact but outputs columns of suggested words made from the list of autocomplete results.
+
+```js
+const result = prompt("Enter a word: ", {
+  autocomplete: {
+    searchFn: findWordStart,
+    behavior: AutocompleteBehavior.SUGGEST,
+  },
+});
+```
+
+<todo - gif>
+
+Autocomplete SUGGEST supports some additional configuration:
+
+##### Resulting column count
+
+Determine how many columns are displayed in the resulting output with the `suggestColCount` field:
+
+```js
+const result = prompt("Enter a word: ", {
+  autocomplete: {
+    searchFn: findWordStart,
+    behavior: AutocompleteBehavior.SUGGEST,
+    suggestColCount: 5,
+  },
+});
+```
+
+The default value is `3`.
+This setting has no impact on the CYCLE behavior.
+
+<todo - gif>
+
+##### Fill
+
+Determine whether prompt-sync-plus fills user input up to the common starting substring of the results with the `fill` field:
+
+```js
+const result = prompt("Enter a word: ", {
+  autocomplete: {
+    searchFn: findWordStart,
+    behavior: AutocompleteBehavior.SUGGEST,
+    fill: true,
+  },
+});
+```
+
+The default value is `false`.
+This setting has no impact on other autocomplete behaviors.
+
+##### Sticky
+
+Determine whether, for the duration of the current prompt execution, autocomplete executes on every key stroke, or only on the configured key (TAB, by default) via the `sticky` field:
+
+```js
+const result = prompt("Enter a word: ", {
+  autocomplete: {
+    searchFn: findWordStart,
+    behavior: AutocompleteBehavior.SUGGEST,
+    sticky: true,
+  },
+});
+```
+
+The default value is `false` - i.e. autocomplete only triggers on TAB (or whichever key is configured to trigger autocomplete; see [additional settings]()).
+
+#### Hybrid
+
+This behavior is a hybrid of CYCLE and SUGGEST. Prompt-sync-plus will output columns of suggested words based on the autocomplete search results, in addition to filling the input line with each successive word in the list.
+
+```js
+const result = prompt("Enter a word: ", {
+  autocomplete: {
+    searchFn: findWordStart,
+    behavior: AutocompleteBehavior.HYBRID,
+  },
+});
+```
+
+#### Autocomplete trigger
+
+By default, autocomplete triggers on the TAB key, but this is configurable with the `triggerKeyCode` field:
+
+```js
+const result = prompt("Enter a word: ", {
+  autocomplete: {
+    searchFn: findWordStart,
+    triggerKeyCode: 192, // back tick
+  },
+});
+```
+
+This library also provides a helpful utility for defining key codes:
+
+```js
+import promptSyncPlus, { Key } from "prompt-sync-plus";
+
+const findWordStart = /* etc */
+
+const prompt = promptSyncPlus({
+  autocomplete: {
+    searchFn: findWordStart,
+    triggerKeyCode: Key.BACK_TICK
+  }
+});
 ```

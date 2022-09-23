@@ -10,14 +10,6 @@ export enum AutocompleteBehavior {
   SUGGEST = "suggest",
 }
 
-export enum CompleteOnOption {
-  // attempt an auto-completion on every key press
-  // NOTE: cannot be set if behavior is set to CYCLE
-  ALWAYS = "always",
-  // (default) attempt an autocomplete only if a specific key is pressed
-  KEYPRESS = "keypress",
-}
-
 export enum Key {
   SIGINT = 3,
   EOT = 4,
@@ -119,6 +111,7 @@ export enum Key {
   DASH = 189,
   PERIOD = 190,
   FORWARD_SLASH = 191,
+  BACK_TICK = 192,
   OPEN_BRACKET = 219,
   BACK_SLASH = 220,
   CLOSE_BRAKET = 221,
@@ -168,8 +161,6 @@ export type Config = {
   autocomplete: {
     // determines how the library responds to the searchFn results
     behavior: AutocompleteBehavior;
-    // determines when autocompletion activates
-    completeOn: CompleteOnOption;
     // determines whether the behavior of autocomplete SUGGEST should fill the given input with the common substring of results
     fill: boolean;
     // the search function used to generate a list of possible completions given a query string
@@ -201,9 +192,6 @@ export const ConfigSchema = Joi.object({
     behavior: Joi.string()
       .allow(...Object.values(AutocompleteBehavior))
       .insensitive(),
-    completeOn: Joi.string()
-      .allow(...Object.values(CompleteOnOption))
-      .insensitive(),
     fill: Joi.boolean(),
     searchFn: Joi.function().arity(1),
     sticky: Joi.boolean(),
@@ -230,7 +218,6 @@ export const ConfigSchema = Joi.object({
 export const DEFAULT_CONFIG: Config = {
   autocomplete: {
     behavior: AutocompleteBehavior.CYCLE,
-    completeOn: CompleteOnOption.KEYPRESS,
     fill: false,
     searchFn: (_: string) => [],
     sticky: false,
@@ -247,7 +234,6 @@ export const DEFAULT_CONFIG: Config = {
 export const EMPTY_CONFIG: Config = {
   autocomplete: {
     behavior: undefined,
-    completeOn: undefined,
     fill: undefined,
     searchFn: undefined,
     sticky: undefined,
