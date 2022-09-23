@@ -28,12 +28,12 @@ At minimum, you need to import the library and instantiate the prompt. The enter
 import prompSyncPlus from "prompt-sync-plus";
 
 const prompt = prompSyncPlus();
-const result = prompt("How are you?");
+const result = prompt("How are you? ");
 
-console.log(`You responded with ${result}`);
+console.log(`You responded with: '${result}'`);
 ```
 
-<todo - gif>
+![Kapture 2022-09-23 at 16 34 38](https://user-images.githubusercontent.com/6632738/192052430-4dd17569-4288-41f2-99fa-f100d91c889a.gif)
 
 ### Configuration
 
@@ -90,12 +90,12 @@ console.log(result): // No response
 A prompt-specific default value can be supplied as a second argument to the prompt:
 
 ```js
-const result = prompt("How are you?", "Good");
+const result = prompt("How are you? ", "Good");
 
-console.log(`You responded with ${result}`); // You responded with Good
+console.log(`You responded with: '${result}'`); // You responded with Good
 ```
 
-<todo - gif>
+![Kapture 2022-09-23 at 16 38 18](https://user-images.githubusercontent.com/6632738/192052875-a3ad8be7-20d6-4be7-8402-2d704b5a7402.gif)
 
 ### Handling sensitive input
 
@@ -104,6 +104,9 @@ For password entry, etc. character input can be obscured via the `echo` field:
 ```js
 const result = prompt("Password: ", { echo: "*" });
 ```
+
+![Kapture 2022-09-23 at 16 40 27](https://user-images.githubusercontent.com/6632738/192053155-ebfa3b31-5419-4c24-a734-660fbc23f52a.gif)
+
 
 To omit output entirely, supply the empty string to `echo`:
 
@@ -117,7 +120,8 @@ Prompt-sync-plus exposes a helpful shorthand for the syntax above:
 const result = prompt.hide("Sensitive info: ");
 ```
 
-<todo - gif>
+![Kapture 2022-09-23 at 16 41 36](https://user-images.githubusercontent.com/6632738/192053289-0670f226-0a57-4d45-acdd-ab068940654b.gif)
+
 
 ### Handling SIGINT
 
@@ -129,19 +133,20 @@ const result = prompt("Enter something or CTRL+C to quit: ", {
 });
 ```
 
-<todo - gif>
+![Kapture 2022-09-23 at 16 45 23](https://user-images.githubusercontent.com/6632738/192053805-aadf68ab-9541-4423-9a4a-5608abebfc05.gif)
+
 
 ### Handling end-of-transmission
 
 Handling end-of-transmission (CTRL+D) is configured via the `eot` boolean field. It determines whether to kill the process and return code 0 (`true`) or gobble up the signal and continue prompting (`false`). The latter is the default behavior.
 
 ```js
-const result = prompt("Enter something or CTRL+D to kill process:", {
+const result = prompt("Enter something CTRL+D: ", {
   eot: true,
 });
 ```
 
-<todo - gif>
+![Kapture 2022-09-23 at 16 51 12](https://user-images.githubusercontent.com/6632738/192054613-e9f61937-3ad2-4179-b18b-0ceda6ec18d1.gif)
 
 ### Autocompletion
 
@@ -190,11 +195,12 @@ const result = prompt("Enter a word: ", {
 
 This behavior cycles through each of the autocomplete results and replaces the input string at the cursor location. At the end of the autocomplete result list, cycle loops around to the start of the list.
 
-<todo - gif>
+![Kapture 2022-09-23 at 16 54 12](https://user-images.githubusercontent.com/6632738/192054999-d5d8371b-b815-4d30-ae7f-3517d5c9c1fc.gif)
 
 #### Suggest
 
 This behavior leaves input intact but outputs columns of suggested words made from the list of autocomplete results.
+When these is only one matching autocomplete result, the rest of the word is filled in automatically.
 
 ```js
 const result = prompt("Enter a word: ", {
@@ -205,7 +211,7 @@ const result = prompt("Enter a word: ", {
 });
 ```
 
-<todo - gif>
+![Kapture 2022-09-23 at 16 56 40](https://user-images.githubusercontent.com/6632738/192055396-339c6f86-4386-47bb-b50c-ba6b25abd5d7.gif)
 
 Autocomplete SUGGEST supports some additional configuration:
 
@@ -226,7 +232,7 @@ const result = prompt("Enter a word: ", {
 The default value is `3`.
 This setting has no impact on the CYCLE behavior.
 
-<todo - gif>
+![Kapture 2022-09-23 at 17 00 06](https://user-images.githubusercontent.com/6632738/192056002-7c0bff50-601d-47c5-9c6e-c70eb1368b45.gif)
 
 ##### Fill
 
@@ -245,6 +251,8 @@ const result = prompt("Enter a word: ", {
 The default value is `false`.
 This setting has no impact on other autocomplete behaviors.
 
+![Kapture 2022-09-23 at 17 04 31](https://user-images.githubusercontent.com/6632738/192056524-67c0eb60-79fc-4748-8566-327f5bfd21be.gif)
+
 ##### Sticky
 
 Determine whether, for the duration of the current prompt execution, autocomplete executes on every key stroke, or only on the configured key (TAB, by default) via the `sticky` field:
@@ -261,6 +269,8 @@ const result = prompt("Enter a word: ", {
 
 The default value is `false` - i.e. autocomplete only triggers on TAB (or whichever key is configured to trigger autocomplete; see [additional settings]()).
 
+![Kapture 2022-09-23 at 17 06 35](https://user-images.githubusercontent.com/6632738/192056793-0d855a52-d0ed-4522-ae7a-943bdb219ac2.gif)
+
 #### Hybrid
 
 This behavior is a hybrid of CYCLE and SUGGEST. Prompt-sync-plus will output columns of suggested words based on the autocomplete search results, in addition to filling the input line with each successive word in the list.
@@ -273,6 +283,9 @@ const result = prompt("Enter a word: ", {
   },
 });
 ```
+
+![Kapture 2022-09-23 at 17 07 36](https://user-images.githubusercontent.com/6632738/192056916-a99ee5bc-d555-4fbf-9f2c-640bd10568a3.gif)
+
 
 #### Autocomplete trigger
 
@@ -314,15 +327,19 @@ const prompt = promptSyncPlus({
   history: promptSyncHistory(),
 });
 
-prompt("Question 1: ");
-prompt("Question 2: ");
-prompt("Question 3: ");
+prompt("Prompt 1: ");
+prompt("Prompt 2: ");
+prompt("Prompt 3: ");
+prompt("Prompt 4: ");
+prompt("Prompt 5: ");
 
 /* user can choose to up or down arrow to scroll through past responses */
 
 // or persist responses to disk
 result.history.save();
 ```
+
+![Kapture 2022-09-23 at 17 13 23](https://user-images.githubusercontent.com/6632738/192057591-3f70eec5-2fef-466a-907d-dadd6b23e97b.gif)
 
 See [prompt-sync-history](https://github.com/davidmarkclements/prompt-sync-history) to learn more about the expected interface and the resulting API.
 
