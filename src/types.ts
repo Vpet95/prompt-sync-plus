@@ -187,6 +187,8 @@ export type Config = {
   echo: string;
   // determines behavior of ^D,
   eot: boolean;
+  // a globally default response to return on any prompt that takes no input
+  defaultResponse: string;
   // the prompt-sync-history object
   // see https://github.com/davidmarkclements/prompt-sync-history
   history?: PromptSyncHistoryObj;
@@ -208,6 +210,7 @@ export const ConfigSchema = Joi.object({
     suggestColCount: Joi.number().min(1),
     triggerKeyCode: Joi.number().allow(...Object.values(Key)),
   }),
+  defaultResponse: Joi.string(),
   echo: Joi.string(),
   eot: Joi.boolean(),
   history: Joi.object({
@@ -234,6 +237,7 @@ export const DEFAULT_CONFIG: Config = {
     suggestColCount: 3,
     triggerKeyCode: Key.TAB,
   },
+  defaultResponse: "",
   echo: undefined,
   eot: false,
   history: undefined,
@@ -250,6 +254,7 @@ export const EMPTY_CONFIG: Config = {
     suggestColCount: undefined,
     triggerKeyCode: undefined,
   },
+  defaultResponse: undefined,
   echo: undefined,
   eot: undefined,
   history: undefined,

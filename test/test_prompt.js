@@ -5,7 +5,7 @@ import sinon from "sinon";
 
 import { Key, ExitCode, AutocompleteBehavior } from "../dist/types.js";
 import { move } from "../dist/utils.js";
-import promptSync, { setDebug } from "../dist/index.js";
+import promptSyncPlus from "../dist/index.js";
 
 import stripAnsi from "strip-ansi";
 import promptSyncHistory from "prompt-sync-history";
@@ -127,7 +127,7 @@ describe("Prompt Sync Plus", () => {
     const msgBuff = createMessageBuffer(msg);
     readerStub = createReadSyncStub(msgBuff);
 
-    const prompt = promptSync();
+    const prompt = promptSyncPlus();
 
     const result = prompt("How are you? ");
 
@@ -135,17 +135,54 @@ describe("Prompt Sync Plus", () => {
     expect(result).to.equal(msg);
   });
 
-  it("Should return the given default value when user's input is empty", () => {
+  it("Should return the given global default response when the user's input is empty", () => {
     const enterBuff = createMessageBuffer("");
     readerStub = createReadSyncStub(enterBuff);
 
-    const prompt = promptSync();
+    const defaultResponse = "global default";
+    const prompt = promptSyncPlus({ defaultResponse });
 
-    const defaultResponse = "Great!";
-    const result = prompt("How are you? ", defaultResponse);
+    const result = prompt("Test prompt: ");
 
     expect(readerStub.called).to.be.true;
     expect(result).to.equal(defaultResponse);
+  });
+
+  it("Should return the given prompt-specific default value when user's input is empty", () => {
+    const enterBuff = createMessageBuffer("");
+    readerStub = createReadSyncStub(enterBuff);
+
+    const prompt = promptSyncPlus();
+
+    const defaultResponse = "prompt-specific default";
+    const result = prompt("Test prompt: ", defaultResponse);
+
+    expect(readerStub.called).to.be.true;
+    expect(result).to.equal(defaultResponse);
+  });
+
+  it("Should overwrite the global default response with the prompt-specific response", () => {
+    const enterBuff = createMessageBuffer("");
+    readerStub = createReadSyncStub(enterBuff);
+
+    const global = "global default";
+    const specific = "prompt-specific default";
+
+    const prompt = promptSyncPlus({ defaultResponse: global });
+
+    let result = prompt("Test prompt: ", specific);
+
+    expect(readerStub.called).to.be.true;
+    expect(result).to.equal(specific);
+
+    readerStub.resetHistory();
+    readerStub.restore();
+    readerStub = createReadSyncStub(enterBuff);
+
+    // make sure the global default sticks around even if the local was used
+    result = prompt("Another test prompt: ");
+
+    expect(result).to.equal(global);
   });
 
   it("Should output the given character provided by the echo option", () => {
@@ -156,7 +193,7 @@ describe("Prompt Sync Plus", () => {
     const msgBuff = createMessageBuffer(msg);
     readerStub = createReadSyncStub(msgBuff);
 
-    const prompt = promptSync();
+    const prompt = promptSyncPlus();
 
     const result = prompt("Enter password: ", null, {
       echo: echoChar,
@@ -182,7 +219,7 @@ describe("Prompt Sync Plus", () => {
     const msgBuff = createMessageBuffer(msg, Key.SIGINT);
     readerStub = createReadSyncStub(msgBuff);
 
-    const prompt = promptSync();
+    const prompt = promptSyncPlus();
 
     let result = prompt("How are you? ");
 
@@ -213,7 +250,7 @@ describe("Prompt Sync Plus", () => {
     let msgBuff = createMessageBuffer("", [Key.EOT, Key.ENTER]);
     readerStub = createReadSyncStub(msgBuff);
 
-    const prompt = promptSync();
+    const prompt = promptSyncPlus();
 
     let result = prompt("How are you? ");
 
@@ -259,7 +296,7 @@ describe("Prompt Sync Plus", () => {
 
     const searchFn = createSearchFunction(["abc", "123", "do re mi"]);
 
-    const prompt = promptSync();
+    const prompt = promptSyncPlus();
 
     let result = prompt("Test: ", null, {
       autocomplete: {
@@ -318,7 +355,7 @@ describe("Prompt Sync Plus", () => {
       "CORE",
     ]);
 
-    const prompt = promptSync();
+    const prompt = promptSyncPlus();
 
     let result = prompt("Test: ", null, {
       autocomplete: {
@@ -364,7 +401,7 @@ describe("Prompt Sync Plus", () => {
 
     const searchFn = createSearchFunction(["CAT", "BAT", "MAT", "RAT"]);
 
-    const prompt = promptSync();
+    const prompt = promptSyncPlus();
 
     let result = prompt("Test: ", null, {
       autocomplete: {
@@ -390,7 +427,7 @@ describe("Prompt Sync Plus", () => {
       "CORE",
     ]);
 
-    const prompt = promptSync();
+    const prompt = promptSyncPlus();
 
     let result = prompt("Test: ", null, {
       autocomplete: {
@@ -425,7 +462,7 @@ describe("Prompt Sync Plus", () => {
       "intolerant",
     ]);
 
-    const prompt = promptSync();
+    const prompt = promptSyncPlus();
 
     let result = prompt("Test: ", null, {
       autocomplete: {
@@ -473,7 +510,7 @@ describe("Prompt Sync Plus", () => {
       "intolerant",
     ]);
 
-    const prompt = promptSync();
+    const prompt = promptSyncPlus();
 
     let result = prompt("Test: ", null, {
       autocomplete: {
@@ -504,7 +541,7 @@ describe("Prompt Sync Plus", () => {
       "intolerant",
     ]);
 
-    const prompt = promptSync();
+    const prompt = promptSyncPlus();
 
     let result = prompt("Test: ", null, {
       autocomplete: {
@@ -553,7 +590,7 @@ describe("Prompt Sync Plus", () => {
       "intolerant",
     ]);
 
-    const prompt = promptSync();
+    const prompt = promptSyncPlus();
 
     let result = prompt("Test: ", null, {
       autocomplete: {
@@ -591,7 +628,7 @@ describe("Prompt Sync Plus", () => {
 
     const history = promptSyncHistory("test-hist-file.txt");
 
-    const prompt = promptSync({
+    const prompt = promptSyncPlus({
       history,
     });
 
@@ -685,7 +722,7 @@ describe("Prompt Sync Plus", () => {
       });
     });
 
-    const prompt = promptSync();
+    const prompt = promptSyncPlus();
     const result = prompt("Message: ");
 
     expect(result).to.equal("xyzabc123");

@@ -34,7 +34,6 @@ export default function PromptSync(config: Config | undefined) {
     value?: string | Config,
     configOverride?: Config
   ) => {
-    const defaultValue = typeof value === "string" && value;
     const promptConfig = (
       value
         ? typeof value === "object"
@@ -46,6 +45,9 @@ export default function PromptSync(config: Config | undefined) {
         ? mergeLeft(mergeLeft(EMPTY_CONFIG, configOverride), globalConfig)
         : globalConfig
     ) as Config;
+
+    const defaultValue =
+      value && typeof value === "string" ? value : promptConfig.defaultResponse;
 
     const { history } = promptConfig;
 
