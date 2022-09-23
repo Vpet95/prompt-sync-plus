@@ -187,11 +187,11 @@ export type Config = {
   echo: string;
   // determines behavior of ^D,
   eot: boolean;
-  // determines behavior of ^C; (default) false: ^C returns null; true: process exits with code 130
-  sigint: boolean;
   // the prompt-sync-history object
   // see https://github.com/davidmarkclements/prompt-sync-history
   history?: PromptSyncHistoryObj;
+  // determines behavior of ^C; (default) false: ^C returns null; true: process exits with code 130
+  sigint: boolean;
 };
 
 export const ConfigSchema = Joi.object({
@@ -210,7 +210,6 @@ export const ConfigSchema = Joi.object({
   }),
   echo: Joi.string(),
   eot: Joi.boolean(),
-  sigint: Joi.boolean(),
   history: Joi.object({
     atStart: Joi.function().arity(0),
     atPenultimate: Joi.function().arity(0),
@@ -222,6 +221,7 @@ export const ConfigSchema = Joi.object({
     push: Joi.function().arity(1),
     save: Joi.function(),
   }),
+  sigint: Joi.boolean(),
 });
 
 export const DEFAULT_CONFIG: Config = {
@@ -234,10 +234,10 @@ export const DEFAULT_CONFIG: Config = {
     suggestColCount: 3,
     triggerKeyCode: Key.TAB,
   },
-  echo: "",
+  echo: undefined,
   eot: false,
-  sigint: false,
   history: undefined,
+  sigint: false,
 };
 
 export const EMPTY_CONFIG: Config = {
@@ -252,8 +252,8 @@ export const EMPTY_CONFIG: Config = {
   },
   echo: undefined,
   eot: undefined,
-  sigint: undefined,
   history: undefined,
+  sigint: undefined,
 };
 
 export type GenericObject = { [key: string]: any };

@@ -68,7 +68,7 @@ export default function PromptSync(config: Config | undefined) {
     let savedUserInput = "";
     let cycleSearchTerm = "";
 
-    const masked = Boolean(promptConfig.echo);
+    const masked = promptConfig.echo !== undefined;
 
     const fileDescriptor =
       process.platform === "win32"
