@@ -111,6 +111,12 @@ To omit output entirely, supply the empty string to `echo`:
 const result = prompt("Sensitive info: ", { echo: "" });
 ```
 
+Prompt-sync-plus exposes a helpful shorthand for the syntax above:
+
+```js
+const result = prompt.hide("Sensitive info: ");
+```
+
 <todo - gif>
 
 ### Handling SIGINT
@@ -281,7 +287,7 @@ const result = prompt("Enter a word: ", {
 });
 ```
 
-This library also provides a helpful utility for defining key codes:
+[This tool](https://www.toptal.com/developers/keycode) is incredibly helpful for key code discovery, however this library also provides a helpful utility for specifying key codes by name:
 
 ```js
 import promptSyncPlus, { Key } from "prompt-sync-plus";
@@ -295,3 +301,68 @@ const prompt = promptSyncPlus({
   }
 });
 ```
+
+### History
+
+The line history interface hasn't changed from prompt-sync and can be used in the same way:
+
+```js
+import promptSyncPlus from "prompt-sync-plus";
+import promptSyncHistory from "prompt-sync-history";
+
+const prompt = promptSyncPlus({
+  history: promptSyncHistory(),
+});
+
+prompt("Question 1: ");
+prompt("Question 2: ");
+prompt("Question 3: ");
+
+/* user can choose to up or down arrow to scroll through past responses */
+
+// or persist responses to disk
+result.history.save();
+```
+
+See [prompt-sync-history](https://github.com/davidmarkclements/prompt-sync-history) to learn more about the expected interface and the resulting API.
+
+## Contributing
+
+Contributions are welcome and encouraged! Feel free to:
+
+- [Open an issue](https://github.com/Vpet95/prompt-sync-plus/issues) to report bugs and request features/enhancements
+- [Open a Pull Request](https://github.com/Vpet95/prompt-sync-plus/pulls) - for major changes, please open an issue first to discuss what you would like to change
+- Spread the word - ⭐️ this repo and let others know about prompt-sync-plus
+
+## Development
+
+To work on prompt-sync-plus:
+
+- Clone the repo locally
+- Run `npm install` to pull down dependencies
+- Run `npm run build` to compile the TypeScript
+- Run `npm run test` to run unit tests or `npm run test-coverage` to run tests and output a test coverage report
+
+In general: prompt-sync-plus development follows the [Git Feature Branch](https://www.atlassian.com/git/tutorials/comparing-workflows/feature-branch-workflow) workflow - new feature work or bug fixes should be done in a dedicated branch.
+
+Attempt to add tests to the test suite whenever possible.
+
+## Roadmap
+
+Like any open source project, this one's a work in progress. Additional work includes, but is not limited to:
+
+- Improving the infrastructure of this project including
+  - Git hooks to run code linter, formatter ([Prettier](https://prettier.io/)), and unit tests prior to push
+  - Github actions for automated building, testing, commit squashing, etc.
+- Workflow standardization - branch names, PR and issue formatting, etc.
+- Unit test organization and cleanup
+- Continued development to address other pain points of prompt-sync
+- Development to expand the concept to add more utility:
+  - `prompt.yesno()`
+  - `prompt.yesnomaybe()`
+  - `prompt.choose(list)`
+  - etc.
+
+## License
+
+This project is licensed under the [MIT](https://github.com/Vpet95/prompt-sync-plus/blob/develop/LICENSE) license. In general, behave in the spirit of the [DBaD](https://dbad-license.org/) license.
