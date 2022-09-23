@@ -1,4 +1,5 @@
 import fs from "fs";
+import { string } from "joi";
 import stripAnsi from "strip-ansi";
 import {
   AutocompleteBehavior,
@@ -9,27 +10,34 @@ import {
   ExitCode,
   Key,
   LineErasureMethod,
+  PromptSyncHistoryObj,
 } from "./types.js";
 import {
   concat,
   eraseLine,
+  getCommonStartingSubstring,
   mergeLeft,
   move,
   moveCursorToColumn,
   restoreCursorPosition,
   saveCursorPosition,
   tablify,
-  getCommonStartingSubstring,
 } from "./utils.js";
 
-export default function PromptSync(config: Config | undefined) {
+type PromptType = {
+  (ask: string, value?: string | Config, configOverride?: Config): string;
+  history?: PromptSyncHistoryObj;
+  hide?: (ask: string) => string;
+};
+
+export default function PromptSyncPlus(config: Config | undefined) {
   const globalConfig = config
     ? mergeLeft(mergeLeft(EMPTY_CONFIG, config), DEFAULT_CONFIG)
     : DEFAULT_CONFIG;
 
   ConfigSchema.validate(globalConfig);
 
-  const prompt = (
+  const prompt = <PromptType>((
     ask: string,
     value?: string | Config,
     configOverride?: Config
@@ -45,6 +53,9 @@ export default function PromptSync(config: Config | undefined) {
         ? mergeLeft(mergeLeft(EMPTY_CONFIG, configOverride), globalConfig)
         : globalConfig
     ) as Config;
+
+    if (promptConfig.history !== undefined)
+      prompt.history = promptConfig.history;
 
     const defaultValue =
       value && typeof value === "string" ? value : promptConfig.defaultResponse;
@@ -429,7 +440,10 @@ export default function PromptSync(config: Config | undefined) {
     process.stdin.setRawMode && process.stdin.setRawMode(wasRaw);
 
     return userInput || defaultValue || "";
-  };
+  });
+
+  prompt.hide = (ask: string) =>
+    prompt(ask, mergeLeft({ echo: "" }, EMPTY_CONFIG) as Config);
 
   function promptPrint(
     masked: boolean,

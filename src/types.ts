@@ -145,7 +145,7 @@ export enum LineErasureMethod {
   ENTIRE = "2",
 }
 
-type PromptSyncHistoryObj = {
+export type PromptSyncHistoryObj = {
   atStart: () => boolean;
   atPenultimate: () => boolean;
   pastEnd: () => boolean;

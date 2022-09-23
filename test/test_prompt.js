@@ -99,7 +99,7 @@ describe("Prompt Sync Plus", () => {
 
     if (readFileStub !== null) {
       readFileStub.resetHistory();
-      readFileStub.restore;
+      readFileStub.restore();
     }
 
     if (writeFileStub !== null) {
@@ -208,6 +208,44 @@ describe("Prompt Sync Plus", () => {
 
     expect(writeSpy.called).to.be.true;
     expect(writeSpy.calledWith(expectedMessage)).to.be.true;
+  });
+
+  it("Should hide output when echo is passed an empty string", () => {
+    writeSpy = sinon.spy(process.stdout, "write");
+
+    const echoChar = "";
+    const msg = "password123";
+    const msgBuff = createMessageBuffer(msg);
+    readerStub = createReadSyncStub(msgBuff);
+
+    const prompt = promptSyncPlus();
+
+    const result = prompt("Enter password: ", null, {
+      echo: echoChar,
+    });
+
+    expect(readerStub.called).to.be.true;
+    expect(result).to.equal(msg);
+
+    // the message should never have been displayed in the terminal
+    expect(wasCalledWithSubstring(writeSpy, msg)).to.be.false;
+  });
+
+  it("Should expose a helpful shorthand for echo: ''", () => {
+    writeSpy = sinon.spy(process.stdout, "write");
+
+    const msg = "123456789";
+    const msgBuff = createMessageBuffer(msg);
+    readerStub = createReadSyncStub(msgBuff);
+
+    const prompt = promptSyncPlus();
+    const result = prompt.hide("Enter SSN: ");
+
+    expect(readerStub.called).to.be.true;
+    expect(result).to.equal(msg);
+
+    // the message should never have been displayed in the terminal
+    expect(wasCalledWithSubstring(writeSpy, msg)).to.be.false;
   });
 
   it("Should handle sigint behavior correctly, depending on whether the sigint setting was passed in", () => {
@@ -683,6 +721,38 @@ describe("Prompt Sync Plus", () => {
 
     expect(writeFileStub.called).to.be.false;
     history.save();
+    expect(writeFileStub.called).to.be.true;
+  });
+
+  // a bit tedious, but all necessary to establish history before save
+  it("Should expose the stored history object", () => {
+    readFileStub = sinon.stub(fs, "readFileSync").throws(); // file doesn't exist
+    writeFileStub = sinon.stub(fs, "writeFileSync");
+
+    writeSpy = sinon.spy(process.stdout, "write");
+
+    let msgBuff = createMessageBuffer("Good", [Key.ENTER]);
+    readerStub = createReadSyncStub(msgBuff);
+
+    const prompt = promptSyncPlus({
+      history: promptSyncHistory("test-exposed-file.txt"),
+    });
+
+    let result = prompt("How are you? ");
+
+    expect(result).to.equal("Good");
+    readerStub.resetHistory();
+    readerStub.restore();
+
+    msgBuff = createMessageBuffer("Yes");
+    readerStub = createReadSyncStub(msgBuff);
+
+    result = prompt("Are you sure? ");
+
+    expect(result).to.equal("Yes");
+
+    expect(writeFileStub.called).to.be.false;
+    prompt.history.save();
     expect(writeFileStub.called).to.be.true;
   });
 
