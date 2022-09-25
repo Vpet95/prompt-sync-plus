@@ -1,12 +1,11 @@
 {
   "name": "prompt-sync-plus",
   "version": "1.0.0",
-  "description": "Node.js synchronous prompting library based heavily on prompt-sync with some fixes and enhancements",
+  "description": "Node.js synchronous prompting library",
   "main": "index.js",
   "scripts": {
-    "build": "tsc && cp package.json ./dist && cd ./dist && npm pack",
-    "test": "mocha",
-    "test-coverage": "c8 mocha"
+    "build": "node build/build.js",
+    "test": "node build/test.js"
   },
   "repository": {
     "type": "git",
@@ -39,6 +38,7 @@
   },
   "devDependencies": {
     "@types/node": "^18.7.13",
+    "badge-maker": "^3.3.1",
     "c8": "^7.12.0",
     "chai": "^4.3.6",
     "mocha": "^10.0.0",

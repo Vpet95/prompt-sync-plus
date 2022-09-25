@@ -1,5 +1,7 @@
 # prompt-sync-plus
 
+![license](./status/license.svg) ![build](./status/build.svg) ![test results](./status/test.svg) ![coverage](./status/coverage.svg)
+
 An easy-to-use, synchronous prompt for Node.js based on the widely-adopted [prompt-sync](https://github.com/heapwolf/prompt-sync). The intent behind this project is to expand upon the original work of heapwolf, et. al., clean up, modernize, and patch the library to fix several existing issues and add some additional features. This library should be a 1:1 drop-in for the original and should at minimum require only an install and replacement of existing imports.
 
 Changes include:
@@ -107,7 +109,6 @@ const result = prompt("Password: ", { echo: "*" });
 
 ![Kapture 2022-09-23 at 16 40 27](https://user-images.githubusercontent.com/6632738/192053155-ebfa3b31-5419-4c24-a734-660fbc23f52a.gif)
 
-
 To omit output entirely, supply the empty string to `echo`:
 
 ```js
@@ -122,7 +123,6 @@ const result = prompt.hide("Sensitive info: ");
 
 ![Kapture 2022-09-23 at 16 41 36](https://user-images.githubusercontent.com/6632738/192053289-0670f226-0a57-4d45-acdd-ab068940654b.gif)
 
-
 ### Handling SIGINT
 
 Handling of SIGINT (Ctrl+C) is configured via the `sigint` boolean field. It determines whether to kill the process and return code 130 (`true`) or gobble up the signal and immediately return `null` from the prompt (`false`). The latter is the default.
@@ -134,7 +134,6 @@ const result = prompt("Enter something or CTRL+C to quit: ", {
 ```
 
 ![Kapture 2022-09-23 at 16 45 23](https://user-images.githubusercontent.com/6632738/192053805-aadf68ab-9541-4423-9a4a-5608abebfc05.gif)
-
 
 ### Handling end-of-transmission
 
@@ -285,7 +284,6 @@ const result = prompt("Enter a word: ", {
 ```
 
 ![Kapture 2022-09-23 at 17 07 36](https://user-images.githubusercontent.com/6632738/192056916-a99ee5bc-d555-4fbf-9f2c-640bd10568a3.gif)
-
 
 #### Autocomplete trigger
 
