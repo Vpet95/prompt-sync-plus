@@ -25,6 +25,7 @@ import {
 
 // added comment to test github actions
 // added another comment to test github actions
+// added final commit to test github actions
 
 type PromptType = {
   (ask: string, value?: string | Config, configOverride?: Config): string;
