@@ -45,6 +45,8 @@ export default function PromptSyncPlus(config: Config | undefined) {
     value?: string | Config,
     configOverride?: Config
   ) => {
+    // adding something that should fail a test to test the automated build
+    return 0;
     const promptConfig = (
       value
         ? typeof value === "object"
