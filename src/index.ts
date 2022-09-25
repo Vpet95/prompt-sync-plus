@@ -1,5 +1,4 @@
 import fs from "fs";
-import { string } from "joi";
 import stripAnsi from "strip-ansi";
 import {
   AutocompleteBehavior,
@@ -23,6 +22,8 @@ import {
   saveCursorPosition,
   tablify,
 } from "./utils.js";
+
+// added comment to test github actions
 
 type PromptType = {
   (ask: string, value?: string | Config, configOverride?: Config): string;
