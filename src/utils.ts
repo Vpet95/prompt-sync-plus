@@ -5,6 +5,7 @@ import {
   TermInputSequence,
   LineErasureMethod,
 } from "./types.js";
+// test comment
 
 // returns a merged object with the left-hand side as the basis
 // only overwrites left-hand values if undefined
