@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "build": "node build/build.js",
-    "test": "node build/test.js"
+    "test": "node build/test.js",
+    "format": "prettier --write src/*.ts"
   },
   "repository": {
     "type": "git",
@@ -42,8 +43,10 @@
     "c8": "^7.12.0",
     "chai": "^4.3.6",
     "mocha": "^10.0.0",
+    "prettier": "^2.6.2",
     "prompt-sync-history": "^1.0.1",
     "sinon": "^14.0.0"
   },
-  "type": "module"
+  "type": "module",
+  "prettier": {}
 }

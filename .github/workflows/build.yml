@@ -23,4 +23,3 @@ jobs:
       - run: npm ci
       - run: npm run build --if-present
       - run: npm test
-      - run: git add -u && git commit -m "Ran build, updating status badges" && git push
