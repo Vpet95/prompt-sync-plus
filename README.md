@@ -362,13 +362,17 @@ In general: prompt-sync-plus development follows the [Git Feature Branch](https:
 
 Attempt to add tests to the test suite whenever possible.
 
+This project uses [husky](https://typicode.github.io/husky/#/) to run pre- and post-commit git hooks to run code formatting via [prettier](https://prettier.io/), build, run tests, and update status badges.
+
+This process will fail if tests fail, code coverage dips, or the build fails.
+
 ## Roadmap
 
 Like any open source project, this one's a work in progress. Additional work includes, but is not limited to:
 
 - Improving the infrastructure of this project including
-  - Git hooks to run code linter, formatter ([Prettier](https://prettier.io/)), and unit tests prior to push
-  - Github actions for automated building, testing, commit squashing, etc.
+  ~~- Git hooks to run code linter, formatter ([Prettier](https://prettier.io/)), and unit tests prior to push~~
+  ~~- Github actions for automated building, testing, commit squashing, etc.~~
 - Workflow standardization - branch names, PR and issue formatting, etc.
 - Unit test organization and cleanup
 - Continued development to address other pain points of prompt-sync
