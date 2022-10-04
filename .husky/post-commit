@@ -1,12 +1,15 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
+echo "### Checking for .commit..."
 if [/bin/test -e .commit ]
     then
+    echo "### RUNNING post-commit"
     rm .commit
     status=$(git status)
 
     if [[ "$status" == *"modified:   status/"* ]]
       then
+      echo "### Adding modified status badges"
       git add -u
       git commit --amend -C HEAD --no-verify
     fi
