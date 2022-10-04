@@ -1,5 +1,4 @@
 import fs from "fs";
-import { string } from "joi";
 import stripAnsi from "strip-ansi";
 import {
   AutocompleteBehavior,

@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+if [/bin/test -e .commit ]
+    then
+    rm .commit
+    status=$(git status)
+
+    if [[ "$status" == *"modified:   status/"* ]]
+      then
+      git add -u
+      git commit --amend -C HEAD --no-verify
+    fi
+fi
+exit
