@@ -233,6 +233,7 @@ describe("utils", () => {
 
     it("Should work on lists with only duplicate strings", () => {
       expect(getCommonStartingSubstring(["hello", "hello"])).to.equal("hello");
+      expect(true).to.be.false;
     });
   });
 
