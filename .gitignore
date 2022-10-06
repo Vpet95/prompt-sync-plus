@@ -1,3 +1,7 @@
 node_modules/
 *.tgz
 .commit
+dist/
+build/*.js
+coverage/
+demo.js

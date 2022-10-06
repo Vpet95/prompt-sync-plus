@@ -1,13 +1,13 @@
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { TermEscapeSequence, TermInputSequence } from "../dist/types.js";
+import { TermEscapeSequence, TermInputSequence } from "../build/types.js";
 import {
   mergeLeft,
   move,
   getCommonStartingSubstring,
   tablify,
-} from "../dist/utils.js";
+} from "../build/utils.js";
 
 describe("utils", () => {
   describe("#mergeLeft()", () => {

@@ -4,8 +4,8 @@
   "description": "Node.js synchronous prompting library",
   "main": "index.js",
   "scripts": {
-    "build": "node build/build.js",
-    "test": "node build/test.js",
+    "build": "node build/scripts/build.js",
+    "test": "node build/scripts/test.js",
     "format": "prettier --write src/*.ts",
     "prepare": "husky install"
   },
@@ -43,11 +43,12 @@
     "badge-maker": "^3.3.1",
     "c8": "^7.12.0",
     "chai": "^4.3.6",
+    "husky": "^8.0.0",
     "mocha": "^10.0.0",
     "prettier": "^2.6.2",
     "prompt-sync-history": "^1.0.1",
-    "sinon": "^14.0.0",
-    "husky": "^8.0.0"
+    "rollup": "^2.79.1",
+    "sinon": "^14.0.0"
   },
   "type": "module"
 }

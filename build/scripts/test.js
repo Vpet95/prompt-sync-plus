@@ -35,9 +35,11 @@ const parseTestOutput = (output) => {
   };
 };
 
+const root = `${__dirname}/../../`;
+
 exec(
   `./node_modules/c8/bin/c8.js mocha`,
-  { cwd: `${__dirname}/..` },
+  { cwd: `${root}` },
   (testError, stdout, ___) => {
     console.log(testError);
     const { passing, failing, coverage } = parseTestOutput(stdout);

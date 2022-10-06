@@ -3,9 +3,9 @@ import fs from "fs";
 import { expect } from "chai";
 import sinon from "sinon";
 
-import { Key, ExitCode, AutocompleteBehavior } from "../dist/types.js";
-import { move } from "../dist/utils.js";
-import promptSyncPlus from "../dist/index.js";
+import { Key, ExitCode, AutocompleteBehavior } from "../build/types.js";
+import { move } from "../build/utils.js";
+import promptSyncPlus from "../build/index.js";
 
 import stripAnsi from "strip-ansi";
 import promptSyncHistory from "prompt-sync-history";

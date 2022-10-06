@@ -29,6 +29,9 @@ type PromptType = {
   hide?: (ask: string) => string;
 };
 
+// Utility exports to help users
+export { Key, AutocompleteBehavior } from "./types.js";
+
 export default function PromptSyncPlus(config: Config | undefined) {
   const globalConfig = config
     ? mergeLeft(mergeLeft(EMPTY_CONFIG, config), DEFAULT_CONFIG)
