@@ -83,7 +83,7 @@ Both methods of configuration take the same JSON schema. See [API]() for a full 
 A global default value can be supplied via the `defaultResponse` field:
 
 ```js
-const prompt = promptSyncPlus({ defaultResponse: "No response" });
+const prompt = psp({ defaultResponse: "No response" });
 const result = prompt("Some question");
 
 console.log(result): // No response
@@ -287,28 +287,28 @@ const result = prompt("Enter a word: ", {
 
 #### Autocomplete trigger
 
-By default, autocomplete triggers on the TAB key, but this is configurable with the `triggerKeyCode` field:
+By default, autocomplete triggers on the TAB key, but this is configurable with the `triggerKey` field:
 
 ```js
 const result = prompt("Enter a word: ", {
   autocomplete: {
     searchFn: findWordStart,
-    triggerKeyCode: 192, // back tick
+    triggerKey: 96, // back tick
   },
 });
 ```
 
-[This tool](https://www.toptal.com/developers/keycode) is incredibly helpful for key code discovery, however this library also provides a helpful utility for specifying key codes by name:
+Trigger keys are just defined by the [ascii](https://www.asciitable.com/) character you want. This library also provides a helpful utility for specifying keys by name to keep your code more self-documenting:
 
 ```js
-import promptSyncPlus, { Key } from "prompt-sync-plus";
+import psp, { Key } from "prompt-sync-plus";
 
 const findWordStart = /* etc */
 
-const prompt = promptSyncPlus({
+const prompt = psp({
   autocomplete: {
     searchFn: findWordStart,
-    triggerKeyCode: Key.BACK_TICK
+    triggerKey: Key.BACK_TICK
   }
 });
 ```
@@ -318,10 +318,10 @@ const prompt = promptSyncPlus({
 The line history interface hasn't changed from prompt-sync and can be used in the same way:
 
 ```js
-import promptSyncPlus from "prompt-sync-plus";
+import psp from "prompt-sync-plus";
 import promptSyncHistory from "prompt-sync-history";
 
-const prompt = promptSyncPlus({
+const prompt = psp({
   history: promptSyncHistory(),
 });
 

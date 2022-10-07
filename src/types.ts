@@ -168,13 +168,13 @@ export type Config = {
     // the search function used to generate a list of possible completions given a query string
     searchFn?: (query: string) => string[];
     // determines whether autocomplete is 'sticky' - i.e. whether autocomplete occurs on every
-    // key stroke or only when triggerKeyCode is hit
+    // key stroke or only when triggerKey is hit
     sticky: boolean;
     // number of columns to display autocomplete suggestions in (if behavior is SUGGEST or HYBRID)
     suggestColCount: number;
     // determines which key activates autocompletion
     // defaults to TAB; keycode: 9
-    triggerKeyCode: Key;
+    triggerKey: Key;
   };
   // determines which character is output to the terminal on key press
   echo: string;
@@ -198,7 +198,7 @@ export const ConfigSchema = Joi.object({
     searchFn: Joi.function().arity(1),
     sticky: Joi.boolean(),
     suggestColCount: Joi.number().min(1),
-    triggerKeyCode: Joi.number().allow(...Object.values(Key)),
+    triggerKey: Joi.number().allow(...Object.values(Key)),
   }),
   defaultResponse: Joi.string(),
   echo: Joi.string(),
@@ -224,7 +224,7 @@ export const DEFAULT_CONFIG: Config = {
     searchFn: (_: string) => [],
     sticky: false,
     suggestColCount: 3,
-    triggerKeyCode: Key.TAB,
+    triggerKey: Key.TAB,
   },
   defaultResponse: "",
   echo: undefined,
@@ -240,7 +240,7 @@ export const EMPTY_CONFIG: Config = {
     searchFn: undefined,
     sticky: undefined,
     suggestColCount: undefined,
-    triggerKeyCode: undefined,
+    triggerKey: undefined,
   },
   defaultResponse: undefined,
   echo: undefined,

@@ -331,7 +331,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
       firstCharOfInput = buf[countBytesRead - 1];
 
       const isAutocompleteTrigger =
-        firstCharOfInput === promptConfig.autocomplete?.triggerKeyCode;
+        firstCharOfInput === promptConfig.autocomplete?.triggerKey;
       const isStickyOnly =
         !isAutocompleteTrigger && promptConfig.autocomplete.sticky;
       const isOutOfBounds =
