@@ -11,7 +11,7 @@
     "noFallthroughCasesInSwitch": true,
     "moduleResolution": "node",
     "declaration": true,
-    "declarationDir": "./dist/dts"
+    "declarationDir": "./build/dts"
   },
   "include": ["./src/**/*"],
   "exclude": ["node_modules"]
