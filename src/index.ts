@@ -10,6 +10,7 @@ import {
   Key,
   LineErasureMethod,
   PromptSyncHistoryObj,
+  TermInputSequence,
 } from "./types.js";
 import {
   concat,
@@ -21,6 +22,7 @@ import {
   restoreCursorPosition,
   saveCursorPosition,
   tablify,
+  escape,
 } from "./utils.js";
 
 type PromptType = {
@@ -32,6 +34,23 @@ type PromptType = {
 // Utility exports to help users
 export { Key, AutocompleteBehavior } from "./types.js";
 
+const getCursorPosition = (fileDescriptor: number) => {
+  process.stdout.write(escape(`[${TermInputSequence.GET_CURSOR_POSITION}`));
+
+  const buf = Buffer.alloc(10);
+  fs.readSync(fileDescriptor, buf);
+
+  const asString = buf.toString(); // "\u001b[<row>;<col>R"
+  const coordSections = asString.substring(asString.indexOf("[")).split(";");
+
+  const pos = {
+    row: parseInt(coordSections[0].substring(1)),
+    col: parseInt(coordSections[1]),
+  };
+
+  return pos;
+};
+
 export default function PromptSyncPlus(config: Config | undefined) {
   const globalConfig = config
     ? mergeLeft(mergeLeft(EMPTY_CONFIG, config), DEFAULT_CONFIG)
@@ -40,7 +59,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
   ConfigSchema.validate(globalConfig);
 
   const prompt = <PromptType>((
-    ask: string,
+    ask?: string,
     value?: string | Config,
     configOverride?: Config
   ) => {
@@ -58,6 +77,8 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
     if (promptConfig.history !== undefined)
       prompt.history = promptConfig.history;
+
+    ask = ask || "";
 
     const defaultValue =
       value && typeof value === "string" ? value : promptConfig.defaultResponse;
@@ -83,8 +104,6 @@ export default function PromptSyncPlus(config: Config | undefined) {
     let savedUserInput = "";
     let cycleSearchTerm = "";
 
-    const masked = promptConfig.echo !== undefined;
-
     const fileDescriptor =
       process.platform === "win32"
         ? process.stdin.fd
@@ -95,8 +114,11 @@ export default function PromptSyncPlus(config: Config | undefined) {
       process.stdin.setRawMode && process.stdin.setRawMode(true);
     }
 
-    // write out the passed-in prompt
-    process.stdout.write(ask);
+    if (ask) {
+      process.stdout.write(ask);
+      // support for multi-line asks
+      ask = ask.split(/\r?\n/).pop();
+    }
 
     let autocompleteCycleIndex = 0;
 
@@ -250,7 +272,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
         switch (sequence) {
           case move().up.sequence.escaped:
-            if (masked) break;
+            if (promptConfig.echo !== undefined) break;
             if (!history) break;
             if (history.atStart()) break;
 
@@ -270,7 +292,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
             );
             break;
           case move().down.sequence.escaped:
-            if (masked) break;
+            if (promptConfig.echo !== undefined) break;
             if (!history) break;
             if (history.pastEnd()) break;
 
@@ -294,13 +316,13 @@ export default function PromptSyncPlus(config: Config | undefined) {
             );
             break;
           case move().left.sequence.escaped:
-            if (masked) break;
+            if (promptConfig.echo !== undefined) break;
             const before = insertPosition;
             insertPosition = --insertPosition < 0 ? 0 : insertPosition;
             if (before - insertPosition) move().left.exec();
             break;
           case move().right.sequence.escaped:
-            if (masked) break;
+            if (promptConfig.echo !== undefined) break;
             insertPosition =
               ++insertPosition > userInput.length
                 ? userInput.length
@@ -309,16 +331,10 @@ export default function PromptSyncPlus(config: Config | undefined) {
             break;
           default:
             if (buf.toString()) {
-              userInput = userInput + buf.toString();
+              userInput = userInput + stripAnsi(buf.toString());
               userInput = userInput.replace(/\0/g, "");
               insertPosition = userInput.length;
-              promptPrint(
-                masked,
-                ask,
-                promptConfig.echo,
-                userInput,
-                insertPosition
-              );
+              promptPrint(ask, userInput, false, promptConfig.echo);
               moveCursorToColumn(insertPosition + ask.length + 1).exec();
               buf = Buffer.alloc(3);
             }
@@ -369,7 +385,8 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
         fs.closeSync(fileDescriptor);
         if (!history) break;
-        if (!masked && userInput.length) history.push(userInput);
+        if (promptConfig.echo === undefined && userInput.length)
+          history.push(userInput);
         history.reset();
         break;
       }
@@ -435,7 +452,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
       if (!isBackspace) storeInput(firstCharOfInput);
 
-      promptPrint(masked, ask, promptConfig.echo, userInput, insertPosition);
+      promptPrint(ask, userInput, isBackspace, promptConfig.echo);
     }
 
     process.stdout.write("\n");
@@ -447,60 +464,45 @@ export default function PromptSyncPlus(config: Config | undefined) {
   prompt.hide = (ask: string) =>
     prompt(ask, mergeLeft({ echo: "" }, EMPTY_CONFIG) as Config);
 
-  function promptPrint(
-    masked: boolean,
-    ask: string,
-    echo: string,
-    str: string,
-    insertPosition: number
-  ) {
-    if (masked) {
-      process.stdout.write(
-        concat(
-          eraseLine(LineErasureMethod.ENTIRE),
-          moveCursorToColumn(0),
-          ask,
-          echo.repeat(str.length)
-        )
-      );
-    } else {
-      saveCursorPosition().exec();
+  function clearOutput(output: string, isBackspace: boolean) {
+    const colCount = process.stdout.columns;
+    const rowCount =
+      Math.ceil(output.length / colCount) +
+      (isBackspace &&
+      (output.length % colCount === 0 || (output.length + 1) % colCount === 0)
+        ? 1
+        : 0);
 
-      if (insertPosition === str.length) {
-        process.stdout.write(
-          concat(
-            eraseLine(LineErasureMethod.ENTIRE),
-            moveCursorToColumn(0),
-            ask,
-            str
-          )
-        );
-      } else {
-        if (ask) {
-          process.stdout.write(
-            concat(
-              eraseLine(LineErasureMethod.ENTIRE),
-              moveCursorToColumn(0),
-              ask,
-              str
-            )
-          );
-        } else {
-          process.stdout.write(
-            concat(
-              eraseLine(LineErasureMethod.ENTIRE),
-              moveCursorToColumn(0),
-              str,
-              move(str.length - insertPosition).left
-            )
-          );
-        }
-      }
+    moveCursorToColumn(0).exec();
+    eraseLine(LineErasureMethod.ENTIRE).exec();
 
-      // Reposition the cursor to the right of the insertion point
-      const askLength = stripAnsi(ask).length;
-      moveCursorToColumn(askLength + 1 + insertPosition).exec();
+    for (let i = 1; i < rowCount; ++i) {
+      move().up.exec();
+      eraseLine(LineErasureMethod.ENTIRE).exec();
     }
+
+    return;
+  }
+
+  function promptPrint(
+    ask: string,
+    str: string,
+    isBackspace: boolean,
+    echo?: string
+  ) {
+    const output = `${ask}${
+      echo === undefined ? str : echo.repeat(str.length)
+    }`;
+
+    clearOutput(output, isBackspace);
+    process.stdout.write(output);
+
+    const col = stripAnsi(output).length % process.stdout.columns;
+
+    // falling on the boundary where the input splits on the next line
+    if (output.length > 0 && col === 0) move().down.exec();
+
+    moveCursorToColumn(col === 0 ? col : col + 1).exec();
   }
 
   return prompt;

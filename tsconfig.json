@@ -7,7 +7,7 @@
     "noImplicitAny": true,
     "noImplicitReturns": true,
     "noImplicitThis": true,
-    "sourceMap": false,
+    "sourceMap": true,
     "noFallthroughCasesInSwitch": true,
     "moduleResolution": "node",
     "declaration": true,

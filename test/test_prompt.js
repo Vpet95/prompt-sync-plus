@@ -199,15 +199,16 @@ describe("Prompt Sync Plus", () => {
       echo: echoChar,
     });
 
-    expect(readerStub.called).to.be.true;
-    expect(result).to.equal(msg);
+    expect(readerStub.called, "Reader stub should be called").to.be.true;
+    expect(result, "Result should equal the expected message").to.equal(msg);
 
-    const expectedMessage = `\u001b[2K\u001b[0GEnter password: ${echoChar.repeat(
-      msg.length
-    )}`;
+    const expectedMessage = `Enter password: ${echoChar.repeat(msg.length)}`;
 
-    expect(writeSpy.called).to.be.true;
-    expect(writeSpy.calledWith(expectedMessage)).to.be.true;
+    expect(writeSpy.called, "Write spy should have been called").to.be.true;
+    expect(
+      wasCalledWithSubstring(writeSpy, expectedMessage),
+      "Write spy should have been called with the expected message"
+    ).to.be.true;
   });
 
   it("Should hide output when echo is passed an empty string", () => {
@@ -403,20 +404,20 @@ describe("Prompt Sync Plus", () => {
     });
 
     expect(
-      writeSpy.getCall(4).args.find((arg) => arg.includes("CAT")),
-      "Should be CAT"
+      writeSpy.getCall(5).args.find((arg) => arg.includes("CAT")),
+      "Write spy should have been called with CAT"
     ).to.not.be.undefined;
     expect(
-      writeSpy.getCall(5).args.find((arg) => arg.includes("CRANBERRY")),
-      "Should be CRANBERRY"
+      writeSpy.getCall(6).args.find((arg) => arg.includes("CRANBERRY")),
+      "Write spy should have been called with CRANBERRY"
     ).to.not.be.undefined;
     expect(
-      writeSpy.getCall(6).args.find((arg) => arg.includes("CORE")),
-      "Should be CORE"
+      writeSpy.getCall(7).args.find((arg) => arg.includes("CORE")),
+      "Write spy should have been called with CORE"
     ).to.not.be.undefined;
     expect(
-      writeSpy.getCall(7).args.find((arg) => arg.includes("CAT")),
-      "Should be CAT (again)"
+      writeSpy.getCall(8).args.find((arg) => arg.includes("CAT")),
+      "Write spy should have been called with (again)"
     ).to.not.be.undefined;
 
     expect(result).to.equal("CAT");
@@ -672,7 +673,9 @@ describe("Prompt Sync Plus", () => {
 
     let result = prompt("How are you? ");
 
-    expect(result).to.equal("Good");
+    expect(result, "Result should be 'Good' (no history search yet)").to.equal(
+      "Good"
+    );
     readerStub.resetHistory();
     readerStub.restore();
 
@@ -681,7 +684,9 @@ describe("Prompt Sync Plus", () => {
 
     result = prompt("Are you sure? ");
 
-    expect(result).to.equal("Yes");
+    expect(result, "Result should be 'Yes' (no history search yet)").to.equal(
+      "Yes"
+    );
     readerStub.resetHistory();
     readerStub.restore();
 
@@ -712,7 +717,9 @@ describe("Prompt Sync Plus", () => {
 
     result = prompt("Are reeeeeaaallly sure?? ");
 
-    expect(result).to.equal("Yes");
+    expect(result, "Result should be 'Yes' (after history search)").to.equal(
+      "Yes"
+    );
     expect(wasCalledWithSubstring(writeSpy, "Are reeeeeaaallly sure?? Yes"));
     expect(wasCalledWithSubstring(writeSpy, "Are reeeeeaaallly sure?? Good"));
     expect(

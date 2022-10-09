@@ -135,6 +135,7 @@ export enum TermInputSequence {
   ARROW_RIGHT = "C",
   END = "F",
   ERASE_LINE = "K",
+  GET_CURSOR_POSITION = "6n",
   HOME = "H",
   MOVE_CURSOR_TO_COLUMN = "G",
   RESTORE_CURSOR = "u",

@@ -381,6 +381,7 @@ Like any open source project, this one's a work in progress. Additional work inc
   - `prompt.yesnomaybe()`
   - `prompt.choose(list)`
   - etc.
+- JSON object as prompt ask
 
 ## License
 
