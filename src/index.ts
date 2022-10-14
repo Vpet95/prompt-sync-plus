@@ -19,11 +19,18 @@ import {
   mergeLeft,
   move,
   moveCursorToColumn,
+  moveCursorTo,
   restoreCursorPosition,
   saveCursorPosition,
   tablify,
   escape,
+  diffIndex,
+  eraseCharacter,
+  deleteCharacter,
 } from "./utils.js";
+
+// for testing purposes only - allows me to break out of possible infinite loops that arise during development
+const MAX_PROMPT_LOOPS = Number.POSITIVE_INFINITY;
 
 type PromptType = {
   (ask: string, value?: string | Config, configOverride?: Config): string;
@@ -31,9 +38,28 @@ type PromptType = {
   hide?: (ask: string) => string;
 };
 
+type CursorPosition = {
+  row: number;
+  col: number;
+};
+
 // Utility exports to help users
 export { Key, AutocompleteBehavior } from "./types.js";
 
+let TERM_COLS = process.stdout.columns;
+let INITIAL_CURSOR_POSITION: CursorPosition = { row: 0, col: 0 };
+let lastPromptOutput: string | null = null;
+
+// keep track of size so we can calculate cursor positioning and output clearing properly
+// todo - this doesn't seem to work since we're waiting on input synchronously and blocking the thread...
+// right now I don't see another solution for this
+process.stdout.on("resize", () => {
+  TERM_COLS = process.stdout.columns;
+  console.log(`resizing, new cols: ${TERM_COLS}`);
+});
+
+// this breaks automated tests because it reads from the same file descriptor as the actual input - gobbling
+// up characters.
 const getCursorPosition = (fileDescriptor: number) => {
   process.stdout.write(escape(`[${TermInputSequence.GET_CURSOR_POSITION}`));
 
@@ -252,7 +278,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
       if (countRows) {
         saveCursorPosition().exec();
 
-        move(process.stdout.columns).left.exec();
+        move(TERM_COLS).left.exec();
 
         for (let moveCount = 0; moveCount < countRows; ++moveCount) {
           move().down.exec();
@@ -262,6 +288,10 @@ export default function PromptSyncPlus(config: Config | undefined) {
         restoreCursorPosition().exec();
       }
     }
+
+    let loopCount = 0;
+
+    INITIAL_CURSOR_POSITION = getCursorPosition(fileDescriptor);
 
     while (true) {
       const countBytesRead = fs.readSync(fileDescriptor, buf, 0, 3, null);
@@ -316,12 +346,14 @@ export default function PromptSyncPlus(config: Config | undefined) {
             );
             break;
           case move().left.sequence.escaped:
+            // todo - needs to be updated to handle multi-line strings
             if (promptConfig.echo !== undefined) break;
             const before = insertPosition;
             insertPosition = --insertPosition < 0 ? 0 : insertPosition;
             if (before - insertPosition) move().left.exec();
             break;
           case move().right.sequence.escaped:
+            // todo - needs to be updated to handle multi-line strings
             if (promptConfig.echo !== undefined) break;
             insertPosition =
               ++insertPosition > userInput.length
@@ -398,8 +430,6 @@ export default function PromptSyncPlus(config: Config | undefined) {
           userInput.slice(0, insertPosition - 1) +
           userInput.slice(insertPosition);
         insertPosition--;
-
-        move().left.exec();
       }
 
       if (isOutOfBounds) continue;
@@ -453,6 +483,10 @@ export default function PromptSyncPlus(config: Config | undefined) {
       if (!isBackspace) storeInput(firstCharOfInput);
 
       promptPrint(ask, userInput, isBackspace, promptConfig.echo);
+
+      loopCount++;
+      if (loopCount === MAX_PROMPT_LOOPS)
+        return userInput || defaultValue || "";
     }
 
     process.stdout.write("\n");
@@ -465,44 +499,58 @@ export default function PromptSyncPlus(config: Config | undefined) {
     prompt(ask, mergeLeft({ echo: "" }, EMPTY_CONFIG) as Config);
 
   function clearOutput(output: string, isBackspace: boolean) {
-    const colCount = process.stdout.columns;
-    const rowCount =
-      Math.ceil(output.length / colCount) +
+    const numRowsToDelete =
+      Math.ceil(output.length / TERM_COLS) +
       (isBackspace &&
-      (output.length % colCount === 0 || (output.length + 1) % colCount === 0)
+      (output.length % TERM_COLS === 0 || (output.length + 1) % TERM_COLS === 0)
         ? 1
         : 0);
 
-    moveCursorToColumn(0).exec();
+    moveCursorTo(INITIAL_CURSOR_POSITION.row, 0).exec();
+    if (numRowsToDelete > 1) move(numRowsToDelete - 1).down.exec();
+
     eraseLine(LineErasureMethod.ENTIRE).exec();
 
-    for (let i = 1; i < rowCount; ++i) {
+    for (let i = 1; i < numRowsToDelete; ++i) {
       move().up.exec();
       eraseLine(LineErasureMethod.ENTIRE).exec();
     }
 
-    return;
+    return numRowsToDelete;
   }
 
+  // todo - there is still a cursor positioning bug related to using the arrow keys and ending the middle of a multi-line
+  // string
+
+  // todo - this method of cursor positioning (using getCursor position) fundamentally won't work with the automated tests I have now
   function promptPrint(
     ask: string,
     str: string,
     isBackspace: boolean,
     echo?: string
   ) {
-    const output = `${ask}${
+    const currentOutput = `${ask}${
       echo === undefined ? str : echo.repeat(str.length)
     }`;
 
-    clearOutput(output, isBackspace);
-    process.stdout.write(output);
-
-    const col = stripAnsi(output).length % process.stdout.columns;
-
-    // falling on the boundary where the input splits on the next line
-    if (output.length > 0 && col === 0) move().down.exec();
-
-    moveCursorToColumn(col === 0 ? col : col + 1).exec();
+    if (isBackspace) {
+      move().left.exec();
+      deleteCharacter().exec();
+    } else {
+      if (lastPromptOutput === null) {
+        lastPromptOutput = currentOutput;
+        moveCursorTo(INITIAL_CURSOR_POSITION.row, 0).exec();
+        process.stdout.write(currentOutput);
+      } else {
+        // output only from the character that changed, outward
+        // this avoids a perceptible flicker in the terminal window
+        const newOutput = currentOutput.substring(
+          diffIndex(lastPromptOutput, currentOutput)
+        );
+        process.stdout.write(newOutput);
+        lastPromptOutput = currentOutput;
+      }
+    }
   }
 
   return prompt;

@@ -85,9 +85,25 @@ export const eraseLine = (
 ) =>
   generateSequenceResponseObject(`[${method}${TermInputSequence.ERASE_LINE}`);
 
+export const eraseCharacter = (n: number = 1) =>
+  generateSequenceResponseObject(`[${n}${TermInputSequence.ERASE_CHARACTER}`);
+
+export const deleteCharacter = (n: number = 1) =>
+  generateSequenceResponseObject(`[${n}${TermInputSequence.DELETE_CHARACTER}`);
+
 export const moveCursorToColumn = (n: number) =>
   generateSequenceResponseObject(
     `[${n}${TermInputSequence.MOVE_CURSOR_TO_COLUMN}`
+  );
+
+export const moveCursorToRow = (n: number) =>
+  generateSequenceResponseObject(
+    `[${n}${TermInputSequence.MOVE_CURSOR_TO_ROW}`
+  );
+
+export const moveCursorTo = (row: number, column: number) =>
+  generateSequenceResponseObject(
+    `[${row};${column}${TermInputSequence.MOVE_CURSOR_TO_ROW_COLUMN}`
   );
 
 export const concat = (...args: Array<SequenceResponse | string>) =>
@@ -156,4 +172,16 @@ export const getCommonStartingSubstring = (list: string[]) => {
   }
 
   return result.join("");
+};
+
+export const diffIndex = (strA: string, strB: string) => {
+  let i = 0;
+  for (; i < Math.min(strA.length, strB.length); i++) {
+    // implies they differ somewhere not at the end
+    if (strA[i] !== strB[i]) return i;
+  }
+
+  // implies the longer string differs than the shorter string
+  // at the index past the end of the shorter string
+  return i;
 };
