@@ -146,6 +146,13 @@ export enum TermInputSequence {
   SAVE_CURSOR = "s",
 }
 
+export enum Direction {
+  LEFT,
+  UP,
+  RIGHT,
+  DOWN,
+}
+
 export enum LineErasureMethod {
   CURSOR_TO_END = "",
   BEGINNING_TO_CURSOR = "1",
