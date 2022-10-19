@@ -88,38 +88,58 @@ const getCursorPosition = (fileDescriptor: number) => {
   return pos;
 };
 
-const moveInternalCursor = (direction: Direction) => {
+// internal function, moves the cursor once in a given direction
+// returns true if the cursor moved, false otherwise
+const _moveInternalCursor = (direction: Direction) => {
+  let moved = false;
+
   switch (direction) {
     case Direction.LEFT:
       if (internalCursorPosition.col === 1) {
-        if (internalCursorPosition.row > 1) {
+        if (internalCursorPosition.row >= INITIAL_CURSOR_POSITION.row) {
           internalCursorPosition.col = TERM_COLS;
           internalCursorPosition.row--;
+          moved = true;
         }
       } else {
         internalCursorPosition.col--;
+        moved = true;
       }
-      // otherwise stay where we are
       break;
     case Direction.RIGHT:
       if (internalCursorPosition.col === TERM_COLS) {
         internalCursorPosition.col = 1;
         internalCursorPosition.row++;
+        moved = true;
       } else {
         internalCursorPosition.col++;
+        moved = true;
       }
       break;
     case Direction.UP:
-      if (internalCursorPosition.row > INITIAL_CURSOR_POSITION.row)
+      if (internalCursorPosition.row > INITIAL_CURSOR_POSITION.row) {
         internalCursorPosition.row--;
+        moved = true;
+      }
       break;
     case Direction.DOWN:
       // todo - consider moving to end-of-line; sometimes terminals will do that
-      if (internalCursorPosition.row < inputEndPosition.row)
+      if (internalCursorPosition.row < inputEndPosition.row) {
         internalCursorPosition.row++;
+        moved = true;
+      }
       break;
     default:
       break;
+  }
+
+  return moved;
+};
+
+const moveInternalCursor = (direction: Direction, n: number = 1) => {
+  for (let i = 0; i < n; ++i) {
+    // check if the cursor moved, if not, we probably hit a limit and can stop early
+    if (!_moveInternalCursor(direction)) break;
   }
 
   // we are strongly coupling the cursors here - this will need to change if we discover a scenario
@@ -223,7 +243,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
         ask.length +
         (promptConfig.echo === undefined
           ? userInput.length
-          : promptConfig.echo.repeat(userInput.length).length);
+          : promptConfig.echo.length * userInput.length);
 
       inputEndPosition.row =
         INITIAL_CURSOR_POSITION.row + (Math.ceil(outputLength / TERM_COLS) - 1);
@@ -607,31 +627,6 @@ export default function PromptSyncPlus(config: Config | undefined) {
   prompt.hide = (ask: string) =>
     prompt(ask, mergeLeft({ echo: "" }, EMPTY_CONFIG) as Config);
 
-  // function clearOutput(output: string, isBackspace: boolean) {
-  //   const numRowsToDelete =
-  //     Math.ceil(output.length / TERM_COLS) +
-  //     (isBackspace &&
-  //     (output.length % TERM_COLS === 0 || (output.length + 1) % TERM_COLS === 0)
-  //       ? 1
-  //       : 0);
-
-  //   moveCursorTo(INITIAL_CURSOR_POSITION.row, 0).exec();
-  //   if (numRowsToDelete > 1) move(numRowsToDelete - 1).down.exec();
-
-  //   eraseLine(LineErasureMethod.ENTIRE).exec();
-
-  //   for (let i = 1; i < numRowsToDelete; ++i) {
-  //     move().up.exec();
-  //     eraseLine(LineErasureMethod.ENTIRE).exec();
-  //   }
-
-  //   return numRowsToDelete;
-  // }
-
-  // todo - there is still a cursor positioning bug related to using the arrow keys and ending the middle of a multi-line
-  // string
-
-  // todo - this method of cursor positioning (using getCursor position) fundamentally won't work with the automated tests I have now
   function promptPrint(
     ask: string,
     userInput: string,
@@ -639,43 +634,30 @@ export default function PromptSyncPlus(config: Config | undefined) {
     isBackspace: boolean,
     echo?: string
   ) {
-    // todo - take ask out of this, and fix whatever breaks as a result
-    // reason: ask will never change, and can't be deleted by the user.
-    // const currentOutput = `${ask}${
-    //   echo === undefined ? userInput : echo.repeat(userInput.length)
-    // }`;
+    const masked = echo !== undefined;
 
     if (isBackspace) {
-      moveInternalCursor(Direction.LEFT);
-      deleteCharacter().exec();
+      if (masked) {
+        // echo can be set to a string of length > 1
+        for (let i = 0; i < echo.length; ++i) {
+          moveInternalCursor(Direction.LEFT);
+          deleteCharacter().exec();
+        }
+      } else {
+        moveInternalCursor(Direction.LEFT);
+        deleteCharacter().exec();
+      }
     } else {
-      // if (!isAtEnd) saveCursorPosition().exec();
+      if (masked && echo.length === 0) return;
 
-      process.stdout.write(changedPortionOfInput);
-      moveInternalCursor(Direction.RIGHT);
-      // if (lastPromptOutput === null) {
-      //   lastPromptOutput = currentOutput;
-      //   moveCursorTo(INITIAL_CURSOR_POSITION.row, 0).exec();
-      //   process.stdout.write(currentOutput);
-      // } else {
-      //   // output only from the character that changed, outward
-      //   // this avoids a perceptible flicker in the terminal window
-      //   const diffIdx = diffIndex(lastPromptOutput, currentOutput);
+      const output = masked
+        ? echo.repeat(changedPortionOfInput.length)
+        : changedPortionOfInput;
 
-      //   // minus 1 in case the character the user enters happens to match the next character in the string
-      //   // at the current input index - this prevents some weirdness
-      //   const newOutput = currentOutput.substring(
-      //     userInput[currentInsertPosition]
-      //     diffIdx > 1 ? diffIdx - 1 : diffIdx
-      //   );
-      //   process.stdout.write(newOutput);
-      //   lastPromptOutput = currentOutput;
-      // }
+      process.stdout.write(output);
 
-      // if (!isAtEnd) {
-      //   restoreCursorPosition().exec();
-      //   move().right.exec();
-      // }
+      // we type one character a time, but if masked, one character may be represented by multiple
+      moveInternalCursor(Direction.RIGHT, masked ? echo.length : 1);
     }
   }
 
