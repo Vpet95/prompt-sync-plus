@@ -25,8 +25,7 @@ import {
   saveCursorPosition,
   tablify,
   escape,
-  diffIndex,
-  deleteCharacter,
+  eraseCharacter,
 } from "./utils.js";
 
 // for testing purposes only - allows me to break out of possible infinite loops that arise during development
@@ -91,49 +90,55 @@ const getCursorPosition = (fileDescriptor: number) => {
 // internal function, moves the cursor once in a given direction
 // returns true if the cursor moved, false otherwise
 const _moveInternalCursor = (direction: Direction) => {
-  let moved = false;
+  const prevPosition = { ...internalCursorPosition };
 
   switch (direction) {
     case Direction.LEFT:
       if (internalCursorPosition.col === 1) {
-        if (internalCursorPosition.row >= INITIAL_CURSOR_POSITION.row) {
+        if (internalCursorPosition.row > INITIAL_CURSOR_POSITION.row) {
           internalCursorPosition.col = TERM_COLS;
           internalCursorPosition.row--;
-          moved = true;
         }
       } else {
-        internalCursorPosition.col--;
-        moved = true;
+        if (internalCursorPosition.row === INITIAL_CURSOR_POSITION.row) {
+          if (internalCursorPosition.col > INITIAL_CURSOR_POSITION.col) {
+            internalCursorPosition.col--;
+          }
+        } else {
+          internalCursorPosition.col--;
+        }
       }
       break;
     case Direction.RIGHT:
-      if (internalCursorPosition.col === TERM_COLS) {
+      if (internalCursorPosition.row === inputEndPosition.row) {
+        if (internalCursorPosition.col < inputEndPosition.col)
+          internalCursorPosition.col++;
+      } else if (internalCursorPosition.col === TERM_COLS) {
         internalCursorPosition.col = 1;
         internalCursorPosition.row++;
-        moved = true;
       } else {
         internalCursorPosition.col++;
-        moved = true;
       }
       break;
     case Direction.UP:
-      if (internalCursorPosition.row > INITIAL_CURSOR_POSITION.row) {
+      // todo - consider moving to beginning of line
+      if (internalCursorPosition.row > INITIAL_CURSOR_POSITION.row)
         internalCursorPosition.row--;
-        moved = true;
-      }
+
       break;
     case Direction.DOWN:
       // todo - consider moving to end-of-line; sometimes terminals will do that
-      if (internalCursorPosition.row < inputEndPosition.row) {
+      if (internalCursorPosition.row < inputEndPosition.row)
         internalCursorPosition.row++;
-        moved = true;
-      }
       break;
     default:
       break;
   }
 
-  return moved;
+  return (
+    prevPosition.col !== internalCursorPosition.col ||
+    prevPosition.row !== internalCursorPosition.row
+  );
 };
 
 const moveInternalCursor = (direction: Direction, n: number = 1) => {
@@ -243,7 +248,8 @@ export default function PromptSyncPlus(config: Config | undefined) {
         ask.length +
         (promptConfig.echo === undefined
           ? userInput.length
-          : promptConfig.echo.length * userInput.length);
+          : promptConfig.echo.length * userInput.length) +
+        1; // +1 because cursor is always just to the right of the last input
 
       inputEndPosition.row =
         INITIAL_CURSOR_POSITION.row + (Math.ceil(outputLength / TERM_COLS) - 1);
@@ -408,6 +414,8 @@ export default function PromptSyncPlus(config: Config | undefined) {
       if (countBytesRead > 1) {
         // received a control sequence
         const sequence = buf.toString();
+        const charSize =
+          promptConfig.echo !== undefined ? promptConfig.echo.length : 1;
 
         switch (sequence) {
           case move().up.sequence.escaped:
@@ -455,25 +463,21 @@ export default function PromptSyncPlus(config: Config | undefined) {
             );
             break;
           case move().left.sequence.escaped:
-            // todo - needs to be updated to handle multi-line strings
-            if (promptConfig.echo !== undefined) break;
+            const leftInsertPosition = currentInsertPosition - charSize;
 
-            const priorInsertPosition = currentInsertPosition;
             currentInsertPosition =
-              --currentInsertPosition < 0 ? 0 : currentInsertPosition;
-            if (priorInsertPosition - currentInsertPosition)
-              moveInternalCursor(Direction.LEFT);
+              leftInsertPosition < 0 ? 0 : leftInsertPosition;
+            moveInternalCursor(Direction.LEFT, charSize);
 
             break;
           case move().right.sequence.escaped:
-            // todo - needs to be updated to handle multi-line strings
-            if (promptConfig.echo !== undefined) break;
+            const rightInsertPosition = currentInsertPosition + charSize;
 
             currentInsertPosition =
-              ++currentInsertPosition > userInput.length
+              rightInsertPosition > userInput.length
                 ? userInput.length
-                : currentInsertPosition;
-            moveInternalCursor(Direction.RIGHT);
+                : rightInsertPosition;
+            moveInternalCursor(Direction.RIGHT, charSize);
 
             break;
           default:
@@ -481,13 +485,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
               userInput = userInput + stripAnsi(buf.toString());
               userInput = userInput.replace(/\0/g, "");
               currentInsertPosition = userInput.length;
-              promptPrint(
-                ask,
-                userInput,
-                changedPortionOfInput,
-                false,
-                promptConfig.echo
-              );
+              promptPrint(changedPortionOfInput, false, promptConfig.echo);
               moveCursorToColumn(currentInsertPosition + ask.length + 1).exec();
               buf = Buffer.alloc(3);
             }
@@ -605,22 +603,21 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
       if (!isBackspace) storeInput(firstCharOfInput);
 
-      promptPrint(
-        ask,
-        userInput,
-        changedPortionOfInput,
-        isBackspace,
-        promptConfig.echo
-      );
+      promptPrint(changedPortionOfInput, isBackspace, promptConfig.echo);
 
+      // this is used to help debug cases where there is an infinite loop
+      // by default this has no impact on the logic
       loopCount++;
-      if (loopCount === MAX_PROMPT_LOOPS)
+      if (loopCount === MAX_PROMPT_LOOPS) {
+        loopCount = 0;
         return userInput || defaultValue || "";
+      }
     }
 
     process.stdout.write("\n");
     process.stdin.setRawMode && process.stdin.setRawMode(wasRaw);
 
+    loopCount = 0;
     return userInput || defaultValue || "";
   });
 
@@ -628,28 +625,22 @@ export default function PromptSyncPlus(config: Config | undefined) {
     prompt(ask, mergeLeft({ echo: "" }, EMPTY_CONFIG) as Config);
 
   function promptPrint(
-    ask: string,
-    userInput: string,
     changedPortionOfInput: string,
     isBackspace: boolean,
     echo?: string
   ) {
     const masked = echo !== undefined;
+    const moveCount = masked ? echo.length : 1;
+
+    if (masked && moveCount === 0) return;
 
     if (isBackspace) {
-      if (masked) {
-        // echo can be set to a string of length > 1
-        for (let i = 0; i < echo.length; ++i) {
-          moveInternalCursor(Direction.LEFT);
-          deleteCharacter().exec();
-        }
-      } else {
+      // echo can be set to a string of length > 1
+      for (let i = 0; i < moveCount; ++i) {
         moveInternalCursor(Direction.LEFT);
-        deleteCharacter().exec();
+        eraseCharacter().exec();
       }
     } else {
-      if (masked && echo.length === 0) return;
-
       const output = masked
         ? echo.repeat(changedPortionOfInput.length)
         : changedPortionOfInput;
@@ -657,7 +648,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
       process.stdout.write(output);
 
       // we type one character a time, but if masked, one character may be represented by multiple
-      moveInternalCursor(Direction.RIGHT, masked ? echo.length : 1);
+      moveInternalCursor(Direction.RIGHT, moveCount);
     }
   }
 
