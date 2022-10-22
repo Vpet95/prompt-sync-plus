@@ -45,6 +45,8 @@ type CursorPosition = {
 // Utility exports to help users
 export { Key, AutocompleteBehavior } from "./types.js";
 
+let USER_ASK = "";
+
 const TERM_COLS = process.stdout.columns;
 
 // top left of terminal window - weird it's not 0,0
@@ -154,6 +156,34 @@ const moveInternalCursor = (direction: Direction, n: number = 1) => {
   return;
 };
 
+/**
+ * Moves the current internal cursor position to the desired position, then syncs the system
+ * cursor. If the intended cursor position is out of bounds (prior to the initial prompt's row
+ * or column, or after the end of input), the movement is curtailed to the limits
+ */
+const moveInternalCursorTo = ({ row, col }: CursorPosition) => {
+  if (row > inputEndPosition.row) row = inputEndPosition.row;
+  else if (row < INITIAL_CURSOR_POSITION.row) row = INITIAL_CURSOR_POSITION.row;
+
+  if (col > TERM_COLS) col = TERM_COLS;
+  else if (col < 1) col = 1;
+
+  internalCursorPosition = { row, col };
+  syncCursors();
+};
+
+// converts the cursor (X, Y) coordinates into a string index representing the new insert position
+// for future user input updates. Useful in cases like UP/DOWN arrow behavior, possibly others
+const syncInsertPostion = () => {
+  const lengthFromRows =
+    (internalCursorPosition.row - INITIAL_CURSOR_POSITION.row) * TERM_COLS;
+
+  // minus one because cursor position is always one to the right of the end of the string
+  const lengthFromCols = internalCursorPosition.col - USER_ASK.length - 1;
+
+  currentInsertPosition = lengthFromRows + lengthFromCols;
+};
+
 /* 
   This is a very important concept: we track the current cursor position internally so we don't need to rely on
   getCursorPosition(), which breaks our tests by introducing the side effect of executing its own write + read to the terminal. 
@@ -198,7 +228,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
     if (promptConfig.history !== undefined)
       prompt.history = promptConfig.history;
 
-    ask = ask || "";
+    USER_ASK = ask || "";
 
     const defaultValue =
       value && typeof value === "string" ? value : promptConfig.defaultResponse;
@@ -233,11 +263,11 @@ export default function PromptSyncPlus(config: Config | undefined) {
       process.stdin.setRawMode && process.stdin.setRawMode(true);
     }
 
-    if (ask) {
-      process.stdout.write(ask);
+    if (USER_ASK) {
+      process.stdout.write(USER_ASK);
       // support for multi-line asks
       // todo - see if this is still necessary
-      ask = ask.split(/\r?\n/).pop();
+      USER_ASK = USER_ASK.split(/\r?\n/).pop();
     }
 
     let autocompleteCycleIndex = 0;
@@ -245,7 +275,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
     function updateInputEndPosition() {
       // take into account the fact that echo can be a multi-character string
       const outputLength =
-        ask.length +
+        USER_ASK.length +
         (promptConfig.echo === undefined
           ? userInput.length
           : promptConfig.echo.length * userInput.length) +
@@ -290,7 +320,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
           ? 0
           : autocompleteCycleIndex + 1;
 
-      process.stdout.write(concat("\r", eraseLine(), ask, currentResult));
+      process.stdout.write(concat("\r", eraseLine(), USER_ASK, currentResult));
 
       userInput = currentResult;
       currentInsertPosition = userInput.length;
@@ -301,7 +331,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
       if (searchResults.length === 0) {
         if (promptConfig.autocomplete.sticky) {
-          process.stdout.write(concat("\r", eraseLine(), ask, userInput));
+          process.stdout.write(concat("\r", eraseLine(), USER_ASK, userInput));
         } else {
           userInput += "\t";
           currentInsertPosition = userInput.length;
@@ -312,8 +342,8 @@ export default function PromptSyncPlus(config: Config | undefined) {
       } else if (searchResults.length === 1 && !isBackspace) {
         userInput = searchResults[0];
         currentInsertPosition = userInput.length;
-        process.stdout.write(concat("\r", eraseLine(), ask, userInput));
-        moveCursorToColumn(ask.length + userInput.length + 1).exec();
+        process.stdout.write(concat("\r", eraseLine(), USER_ASK, userInput));
+        moveCursorToColumn(USER_ASK.length + userInput.length + 1).exec();
 
         return 0;
       }
@@ -323,7 +353,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
         if (commonSubstring && commonSubstring !== userInput) {
           userInput = commonSubstring;
-          moveCursorToColumn(ask.length + userInput.length + 1).exec();
+          moveCursorToColumn(USER_ASK.length + userInput.length + 1).exec();
         }
       }
 
@@ -335,7 +365,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
       saveCursorPosition().exec();
       process.stdout.write(
-        concat("\r", eraseLine(), ask, userInput, "\n", tableData.output)
+        concat("\r", eraseLine(), USER_ASK, userInput, "\n", tableData.output)
       );
       restoreCursorPosition().exec();
 
@@ -356,8 +386,8 @@ export default function PromptSyncPlus(config: Config | undefined) {
       } else if (searchResults.length === 1) {
         userInput = searchResults[0];
         currentInsertPosition = userInput.length;
-        process.stdout.write(concat("\r", eraseLine(), ask, userInput));
-        moveCursorToColumn(ask.length + userInput.length + 1).exec();
+        process.stdout.write(concat("\r", eraseLine(), USER_ASK, userInput));
+        moveCursorToColumn(USER_ASK.length + userInput.length + 1).exec();
 
         return 0;
       }
@@ -379,10 +409,10 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
       saveCursorPosition().exec();
       process.stdout.write(
-        concat("\r", eraseLine(), ask, userInput, "\n", tableData.output)
+        concat("\r", eraseLine(), USER_ASK, userInput, "\n", tableData.output)
       );
       restoreCursorPosition().exec();
-      moveCursorToColumn(ask.length + userInput.length + 1).exec();
+      moveCursorToColumn(USER_ASK.length + userInput.length + 1).exec();
 
       return tableData.rowCount;
     }
@@ -400,6 +430,65 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
         restoreCursorPosition().exec();
       }
+    }
+
+    /**
+     * @param direction Whether we are moving UP or DOWN in history
+     * @returns true if history scroll happened, false otherwise
+     */
+    function scrollHistory(direction: Direction) {
+      if (direction === Direction.UP) {
+        if (history.atStart()) return false;
+
+        if (history.atEnd()) {
+          savedUserInput = userInput;
+          savedInsertPosition = currentInsertPosition;
+        }
+
+        userInput = history.prev();
+        currentInsertPosition = userInput.length;
+
+        // todo - update this to handle multi-line inputs, will need a more sophisticated erasure method
+        process.stdout.write(
+          concat(
+            eraseLine(LineErasureMethod.ENTIRE),
+            moveCursorToColumn(0),
+            USER_ASK,
+            userInput
+          )
+        );
+
+        // todo - update end-positioning
+      } else if (direction === Direction.DOWN) {
+        if (history.pastEnd()) return false;
+
+        if (history.atPenultimate()) {
+          userInput = savedUserInput;
+          currentInsertPosition = savedInsertPosition;
+          history.next();
+        } else {
+          userInput = history.next();
+          currentInsertPosition = userInput.length;
+        }
+
+        // todo - update this to handle multi-line inputs, will need a more sophisticated erasure method
+        process.stdout.write(
+          concat(
+            eraseLine(LineErasureMethod.ENTIRE),
+            moveCursorToColumn(0),
+            USER_ASK,
+            userInput,
+            moveCursorToColumn(currentInsertPosition + USER_ASK.length + 1)
+          )
+        );
+
+        // todo - update end-positioning
+      } else {
+        // should never happen, but good to check
+        throw new Error(`Unexpected scroll direction; code ${direction}`);
+      }
+
+      return true;
     }
 
     let loopCount = 0;
@@ -420,47 +509,26 @@ export default function PromptSyncPlus(config: Config | undefined) {
         switch (sequence) {
           case move().up.sequence.escaped:
             if (promptConfig.echo !== undefined) break;
-            if (!history) break;
-            if (history.atStart()) break;
 
-            if (history.atEnd()) {
-              savedUserInput = userInput;
-              savedInsertPosition = currentInsertPosition;
+            if (history) {
+              if (!scrollHistory(Direction.UP)) break;
+            } else {
+              moveInternalCursor(Direction.UP);
+              syncInsertPostion();
             }
-            userInput = history.prev();
-            currentInsertPosition = userInput.length;
-            process.stdout.write(
-              concat(
-                eraseLine(LineErasureMethod.ENTIRE),
-                moveCursorToColumn(0),
-                ask,
-                userInput
-              )
-            );
+            if (!history) break;
+
             break;
           case move().down.sequence.escaped:
             if (promptConfig.echo !== undefined) break;
-            if (!history) break;
-            if (history.pastEnd()) break;
 
-            if (history.atPenultimate()) {
-              userInput = savedUserInput;
-              currentInsertPosition = savedInsertPosition;
-              history.next();
+            if (history) {
+              if (!scrollHistory(Direction.DOWN)) break;
             } else {
-              userInput = history.next();
-              currentInsertPosition = userInput.length;
+              moveInternalCursor(Direction.DOWN);
+              syncInsertPostion();
             }
 
-            process.stdout.write(
-              concat(
-                eraseLine(LineErasureMethod.ENTIRE),
-                moveCursorToColumn(0),
-                ask,
-                userInput,
-                moveCursorToColumn(currentInsertPosition + ask.length + 1)
-              )
-            );
             break;
           case move().left.sequence.escaped:
             const leftInsertPosition = currentInsertPosition - charSize;
@@ -486,7 +554,9 @@ export default function PromptSyncPlus(config: Config | undefined) {
               userInput = userInput.replace(/\0/g, "");
               currentInsertPosition = userInput.length;
               promptPrint(changedPortionOfInput, false, promptConfig.echo);
-              moveCursorToColumn(currentInsertPosition + ask.length + 1).exec();
+              moveCursorToColumn(
+                currentInsertPosition + USER_ASK.length + 1
+              ).exec();
               buf = Buffer.alloc(3);
             }
         }
@@ -512,11 +582,12 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
       // ^C
       if (firstCharOfInput === Key.SIGINT) {
+        moveInternalCursorTo(inputEndPosition);
+
         process.stdout.write("^C\n");
         fs.closeSync(fileDescriptor);
 
         if (promptConfig.sigint) process.exit(ExitCode.SIGINT);
-
         process.stdin.setRawMode && process.stdin.setRawMode(wasRaw);
 
         return null;
@@ -525,6 +596,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
       // ^D
       if (firstCharOfInput === Key.EOT) {
         if (userInput.length === 0 && promptConfig.eot) {
+          moveInternalCursorTo(inputEndPosition);
           process.stdout.write("exit\n");
           process.exit(ExitCode.SUCCESS);
         }
@@ -610,19 +682,27 @@ export default function PromptSyncPlus(config: Config | undefined) {
       loopCount++;
       if (loopCount === MAX_PROMPT_LOOPS) {
         loopCount = 0;
+        moveInternalCursorTo(inputEndPosition);
         return userInput || defaultValue || "";
       }
     }
+
+    // move cursor to the end just before submission - necessary in cases where the user was
+    // editing input somewhere in the middle of a multi-line entry
+    moveInternalCursorTo(inputEndPosition);
 
     process.stdout.write("\n");
     process.stdin.setRawMode && process.stdin.setRawMode(wasRaw);
 
     loopCount = 0;
+
+    // todo - write a function to reset global state
+
     return userInput || defaultValue || "";
   });
 
-  prompt.hide = (ask: string) =>
-    prompt(ask, mergeLeft({ echo: "" }, EMPTY_CONFIG) as Config);
+  prompt.hide = (USER_ASK: string) =>
+    prompt(USER_ASK, mergeLeft({ echo: "" }, EMPTY_CONFIG) as Config);
 
   function promptPrint(
     changedPortionOfInput: string,
