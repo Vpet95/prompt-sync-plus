@@ -143,25 +143,36 @@ const _moveInternalCursor = (direction: Direction) => {
   );
 };
 
+/**
+ * Moves the internal cursor position n times in a given direction, then syncs the system
+ * cursor to the internal cursor so the user sees the updated position
+ * @returns true if the cursor moved at all, false otherwise
+ */
 const moveInternalCursor = (direction: Direction, n: number = 1) => {
+  let moved = false;
   for (let i = 0; i < n; ++i) {
     // check if the cursor moved, if not, we probably hit a limit and can stop early
     if (!_moveInternalCursor(direction)) break;
+
+    moved = true;
   }
 
   // we are strongly coupling the cursors here - this will need to change if we discover a scenario
   // where we'll want our cursor and the external cursor positions to be different
-  syncCursors();
+  if (moved) syncCursors();
 
-  return;
+  return moved;
 };
 
 /**
  * Moves the current internal cursor position to the desired position, then syncs the system
- * cursor. If the intended cursor position is out of bounds (prior to the initial prompt's row
- * or column, or after the end of input), the movement is curtailed to the limits
+ * cursor. If the intended cursor position is out of bounds (prior to the initial prompt's row,
+ * to the left of the starting column index, or after the end of input), the movement is
+ * curtailed to the limits
  */
 const moveInternalCursorTo = ({ row, col }: CursorPosition) => {
+  // another option here would be to just throw an error - if the program ever
+  // attempts to move the cursor out of bounds, it's likely unintneded... but eh
   if (row > inputEndPosition.row) row = inputEndPosition.row;
   else if (row < INITIAL_CURSOR_POSITION.row) row = INITIAL_CURSOR_POSITION.row;
 
@@ -199,6 +210,23 @@ const syncInsertPostion = () => {
 */
 const syncCursors = () => {
   moveCursorTo(internalCursorPosition.row, internalCursorPosition.col).exec();
+};
+
+const eraseUserInput = () => {
+  moveInternalCursorTo(inputEndPosition);
+
+  for (
+    let row = internalCursorPosition.row;
+    row > INITIAL_CURSOR_POSITION.row;
+    --row
+  ) {
+    eraseLine(LineErasureMethod.ENTIRE).exec();
+    moveInternalCursor(Direction.UP);
+  }
+
+  // at this point we're on the same line as the initial prompt
+  eraseLine(LineErasureMethod.ENTIRE).exec();
+  moveInternalCursorTo({ row: INITIAL_CURSOR_POSITION.row, col: 1 });
 };
 
 export default function PromptSyncPlus(config: Config | undefined) {
@@ -249,7 +277,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
     let changedPortionOfInput = "";
     let firstCharOfInput;
 
-    // a temporary buffer to store the user's current input during history UP/DOWN arrow actions
+    // a temporary buffer to store the user's current input during history scroll
     let savedUserInput = "";
     let cycleSearchTerm = "";
 
@@ -434,11 +462,10 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
     /**
      * @param direction Whether we are moving UP or DOWN in history
-     * @returns true if history scroll happened, false otherwise
      */
     function scrollHistory(direction: Direction) {
       if (direction === Direction.UP) {
-        if (history.atStart()) return false;
+        if (history.atStart()) return;
 
         if (history.atEnd()) {
           savedUserInput = userInput;
@@ -447,20 +474,8 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
         userInput = history.prev();
         currentInsertPosition = userInput.length;
-
-        // todo - update this to handle multi-line inputs, will need a more sophisticated erasure method
-        process.stdout.write(
-          concat(
-            eraseLine(LineErasureMethod.ENTIRE),
-            moveCursorToColumn(0),
-            USER_ASK,
-            userInput
-          )
-        );
-
-        // todo - update end-positioning
       } else if (direction === Direction.DOWN) {
-        if (history.pastEnd()) return false;
+        if (history.pastEnd()) return;
 
         if (history.atPenultimate()) {
           userInput = savedUserInput;
@@ -470,25 +485,18 @@ export default function PromptSyncPlus(config: Config | undefined) {
           userInput = history.next();
           currentInsertPosition = userInput.length;
         }
-
-        // todo - update this to handle multi-line inputs, will need a more sophisticated erasure method
-        process.stdout.write(
-          concat(
-            eraseLine(LineErasureMethod.ENTIRE),
-            moveCursorToColumn(0),
-            USER_ASK,
-            userInput,
-            moveCursorToColumn(currentInsertPosition + USER_ASK.length + 1)
-          )
-        );
-
-        // todo - update end-positioning
       } else {
         // should never happen, but good to check
         throw new Error(`Unexpected scroll direction; code ${direction}`);
       }
 
-      return true;
+      eraseUserInput();
+      process.stdout.write(`${USER_ASK}${userInput}`);
+
+      updateInputEndPosition();
+      moveInternalCursorTo(inputEndPosition);
+
+      return;
     }
 
     let loopCount = 0;
@@ -511,44 +519,35 @@ export default function PromptSyncPlus(config: Config | undefined) {
             if (promptConfig.echo !== undefined) break;
 
             if (history) {
-              if (!scrollHistory(Direction.UP)) break;
+              scrollHistory(Direction.UP);
             } else {
-              moveInternalCursor(Direction.UP);
-              syncInsertPostion();
+              if (moveInternalCursor(Direction.UP)) syncInsertPostion();
             }
-            if (!history) break;
 
             break;
           case move().down.sequence.escaped:
             if (promptConfig.echo !== undefined) break;
 
             if (history) {
-              if (!scrollHistory(Direction.DOWN)) break;
+              scrollHistory(Direction.DOWN);
             } else {
-              moveInternalCursor(Direction.DOWN);
-              syncInsertPostion();
+              if (moveInternalCursor(Direction.DOWN)) syncInsertPostion();
             }
 
             break;
           case move().left.sequence.escaped:
-            const leftInsertPosition = currentInsertPosition - charSize;
-
-            currentInsertPosition =
-              leftInsertPosition < 0 ? 0 : leftInsertPosition;
-            moveInternalCursor(Direction.LEFT, charSize);
+            if (moveInternalCursor(Direction.LEFT, charSize))
+              syncInsertPostion();
 
             break;
           case move().right.sequence.escaped:
-            const rightInsertPosition = currentInsertPosition + charSize;
-
-            currentInsertPosition =
-              rightInsertPosition > userInput.length
-                ? userInput.length
-                : rightInsertPosition;
-            moveInternalCursor(Direction.RIGHT, charSize);
+            if (moveInternalCursor(Direction.RIGHT, charSize))
+              syncInsertPostion();
 
             break;
           default:
+            // todo - determine what would actually trigger this logic? Could it be
+            // multi-byte characters? Chinese symbols? Emojis?
             if (buf.toString()) {
               userInput = userInput + stripAnsi(buf.toString());
               userInput = userInput.replace(/\0/g, "");
