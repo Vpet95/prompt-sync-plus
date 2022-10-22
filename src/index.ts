@@ -446,18 +446,16 @@ export default function PromptSyncPlus(config: Config | undefined) {
     }
 
     function clearSuggestTable(countRows: number) {
-      if (countRows) {
-        saveCursorPosition().exec();
+      if (countRows < 1) return;
 
-        move(TERM_COLS).left.exec();
-
-        for (let moveCount = 0; moveCount < countRows; ++moveCount) {
-          move().down.exec();
-          eraseLine().exec();
-        }
-
-        restoreCursorPosition().exec();
+      for (let moveCount = 0; moveCount < countRows; ++moveCount) {
+        // moves the system cursor only
+        move().down.exec();
+        eraseLine(LineErasureMethod.ENTIRE).exec();
       }
+
+      // restore original cursor position
+      syncCursors();
     }
 
     /**
@@ -566,20 +564,22 @@ export default function PromptSyncPlus(config: Config | undefined) {
       }
 
       // if it is not a control character seq, assume only one character is read
-      firstCharOfInput = buf[countBytesRead - 1];
+      firstCharOfInput = buf[0];
 
       const isAutocompleteTrigger =
         firstCharOfInput === promptConfig.autocomplete?.triggerKey;
       const isStickyOnly =
         !isAutocompleteTrigger && promptConfig.autocomplete.sticky;
-      const isOutOfBounds =
+      const isUnsupportedOrUnknownInput =
         firstCharOfInput != Key.TAB &&
         (firstCharOfInput < Key.SPACE || firstCharOfInput > Key.BACKSPACE);
-
       const isBackspace =
         firstCharOfInput === Key.BACKSPACE ||
         (process.platform === "win32" &&
           firstCharOfInput === Key.WIN_BACKSPACE);
+
+      // in case the user picked a wierd key to trigger auto-complete, allow it
+      if (isUnsupportedOrUnknownInput && !isAutocompleteTrigger) continue;
 
       // ^C
       if (firstCharOfInput === Key.SIGINT) {
@@ -616,7 +616,9 @@ export default function PromptSyncPlus(config: Config | undefined) {
       }
 
       if (isBackspace) {
-        if (!currentInsertPosition) continue;
+        // todo - possibly move secondary backspace handling logic out of promptPrint() and into here
+        // it's confusing having backspace logic in more than one place
+        if (currentInsertPosition === 0) continue;
 
         userInput =
           userInput.slice(0, currentInsertPosition - 1) +
@@ -625,8 +627,6 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
         updateInputEndPosition();
       }
-
-      if (isOutOfBounds) continue;
 
       if (
         promptConfig.autocomplete?.searchFn &&
