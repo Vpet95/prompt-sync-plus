@@ -499,6 +499,58 @@ export default function PromptSyncPlus(config: Config | undefined) {
       return;
     }
 
+    function handleMultiByteSequence() {
+      // received a control sequence
+      const sequence = buf.toString();
+      const charSize =
+        promptConfig.echo !== undefined ? promptConfig.echo.length : 1;
+
+      switch (sequence) {
+        case move().up.sequence.escaped:
+          if (promptConfig.echo !== undefined) break;
+
+          if (history) {
+            scrollHistory(Direction.UP);
+          } else {
+            if (moveInternalCursor(Direction.UP)) syncInsertPostion();
+          }
+
+          break;
+        case move().down.sequence.escaped:
+          if (promptConfig.echo !== undefined) break;
+
+          if (history) {
+            scrollHistory(Direction.DOWN);
+          } else {
+            if (moveInternalCursor(Direction.DOWN)) syncInsertPostion();
+          }
+
+          break;
+        case move().left.sequence.escaped:
+          if (moveInternalCursor(Direction.LEFT, charSize)) syncInsertPostion();
+
+          break;
+        case move().right.sequence.escaped:
+          if (moveInternalCursor(Direction.RIGHT, charSize))
+            syncInsertPostion();
+
+          break;
+        default:
+          // todo - determine what would actually trigger this logic? Could it be
+          // multi-byte characters? Chinese symbols? Emojis?
+          if (buf.toString()) {
+            userInput = userInput + stripAnsi(buf.toString());
+            userInput = userInput.replace(/\0/g, "");
+            currentInsertPosition = userInput.length;
+            promptPrint(changedPortionOfInput, false, promptConfig.echo);
+            moveCursorToColumn(
+              currentInsertPosition + USER_ASK.length + 1
+            ).exec();
+            buf = Buffer.alloc(3);
+          }
+      }
+    }
+
     let loopCount = 0;
 
     INITIAL_CURSOR_POSITION = getCursorPosition(fileDescriptor);
@@ -509,58 +561,8 @@ export default function PromptSyncPlus(config: Config | undefined) {
       const countBytesRead = fs.readSync(fileDescriptor, buf, 0, 3, null);
 
       if (countBytesRead > 1) {
-        // received a control sequence
-        const sequence = buf.toString();
-        const charSize =
-          promptConfig.echo !== undefined ? promptConfig.echo.length : 1;
-
-        switch (sequence) {
-          case move().up.sequence.escaped:
-            if (promptConfig.echo !== undefined) break;
-
-            if (history) {
-              scrollHistory(Direction.UP);
-            } else {
-              if (moveInternalCursor(Direction.UP)) syncInsertPostion();
-            }
-
-            break;
-          case move().down.sequence.escaped:
-            if (promptConfig.echo !== undefined) break;
-
-            if (history) {
-              scrollHistory(Direction.DOWN);
-            } else {
-              if (moveInternalCursor(Direction.DOWN)) syncInsertPostion();
-            }
-
-            break;
-          case move().left.sequence.escaped:
-            if (moveInternalCursor(Direction.LEFT, charSize))
-              syncInsertPostion();
-
-            break;
-          case move().right.sequence.escaped:
-            if (moveInternalCursor(Direction.RIGHT, charSize))
-              syncInsertPostion();
-
-            break;
-          default:
-            // todo - determine what would actually trigger this logic? Could it be
-            // multi-byte characters? Chinese symbols? Emojis?
-            if (buf.toString()) {
-              userInput = userInput + stripAnsi(buf.toString());
-              userInput = userInput.replace(/\0/g, "");
-              currentInsertPosition = userInput.length;
-              promptPrint(changedPortionOfInput, false, promptConfig.echo);
-              moveCursorToColumn(
-                currentInsertPosition + USER_ASK.length + 1
-              ).exec();
-              buf = Buffer.alloc(3);
-            }
-        }
-
-        continue; // any other 3 character sequence is ignored
+        handleMultiByteSequence();
+        continue;
       }
 
       // if it is not a control character seq, assume only one character is read
