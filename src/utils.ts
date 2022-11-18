@@ -29,6 +29,8 @@ export const mergeLeft = (
     : b;
 };
 
+/* sigh - I wish I knew of the ansi-escapes package sooner - oh well, in too deep */
+
 export const escape = (str: string) => `${TermEscapeSequence}${str}`;
 
 type SequenceResponse = {

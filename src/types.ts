@@ -133,6 +133,7 @@ export enum TermInputSequence {
   ARROW_DOWN = "B",
   ARROW_LEFT = "D",
   ARROW_RIGHT = "C",
+  COLOR = "m",
   DELETE_CHARACTER = "P",
   END = "F",
   ERASE_CHARACTER = "X",

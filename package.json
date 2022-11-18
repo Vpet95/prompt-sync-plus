@@ -4,7 +4,9 @@
   "description": "Node.js synchronous prompting library",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "node build/scripts/build.js",
     "test": "node build/scripts/test.js",

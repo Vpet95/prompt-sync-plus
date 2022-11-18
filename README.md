@@ -266,7 +266,7 @@ const result = prompt("Enter a word: ", {
 });
 ```
 
-The default value is `false` - i.e. autocomplete only triggers on TAB (or whichever key is configured to trigger autocomplete; see [additional settings]()).
+The default value is `false` - i.e. autocomplete only triggers on TAB (or whichever key is configured to trigger autocomplete; see [additional settings]()). Note that sticky is only configurable with `AutocompleteBehavior.SUGGEST`.
 
 ![Kapture 2022-09-23 at 17 06 35](https://user-images.githubusercontent.com/6632738/192056793-0d855a52-d0ed-4522-ae7a-943bdb219ac2.gif)
 

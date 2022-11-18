@@ -334,24 +334,19 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
       const searchResults = promptConfig.autocomplete.searchFn(cycleSearchTerm);
 
-      if (searchResults.length === 0) {
-        userInput += "\t";
-        currentInsertPosition = userInput.length;
-        process.stdout.write("\t");
-        return;
-      }
+      if (searchResults.length === 0) return;
 
       const currentResult = searchResults[autocompleteCycleIndex];
 
-      autocompleteCycleIndex =
-        autocompleteCycleIndex >= searchResults.length - 1
-          ? 0
-          : autocompleteCycleIndex + 1;
+      if (++autocompleteCycleIndex === searchResults.length)
+        autocompleteCycleIndex = 0;
 
       process.stdout.write(concat("\r", eraseLine(), USER_ASK, currentResult));
 
       userInput = currentResult;
       currentInsertPosition = userInput.length;
+      updateInputEndPosition();
+      moveInternalCursorTo(inputEndPosition);
     }
 
     function autocompleteSuggest(isBackspace: boolean) {
@@ -360,18 +355,15 @@ export default function PromptSyncPlus(config: Config | undefined) {
       if (searchResults.length === 0) {
         if (promptConfig.autocomplete.sticky) {
           process.stdout.write(concat("\r", eraseLine(), USER_ASK, userInput));
-        } else {
-          userInput += "\t";
-          currentInsertPosition = userInput.length;
-          process.stdout.write("\t");
         }
 
         return 0;
       } else if (searchResults.length === 1 && !isBackspace) {
         userInput = searchResults[0];
         currentInsertPosition = userInput.length;
+        updateInputEndPosition();
         process.stdout.write(concat("\r", eraseLine(), USER_ASK, userInput));
-        moveCursorToColumn(USER_ASK.length + userInput.length + 1).exec();
+        moveInternalCursorTo(inputEndPosition);
 
         return 0;
       }
@@ -381,7 +373,8 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
         if (commonSubstring && commonSubstring !== userInput) {
           userInput = commonSubstring;
-          moveCursorToColumn(USER_ASK.length + userInput.length + 1).exec();
+          updateInputEndPosition();
+          moveInternalCursorTo(inputEndPosition);
         }
       }
 
@@ -405,27 +398,22 @@ export default function PromptSyncPlus(config: Config | undefined) {
       if (cycleSearchTerm.length === 0) cycleSearchTerm = userInput;
 
       const searchResults = promptConfig.autocomplete.searchFn(cycleSearchTerm);
+      if (!searchResults.length) return 0;
 
-      if (searchResults.length === 0) {
-        userInput += "\t";
-        currentInsertPosition = userInput.length;
-        process.stdout.write("\t");
-        return 0;
-      } else if (searchResults.length === 1) {
+      if (searchResults.length === 1) {
         userInput = searchResults[0];
         currentInsertPosition = userInput.length;
+        updateInputEndPosition();
         process.stdout.write(concat("\r", eraseLine(), USER_ASK, userInput));
-        moveCursorToColumn(USER_ASK.length + userInput.length + 1).exec();
+        moveInternalCursorTo(inputEndPosition);
 
         return 0;
       }
 
       const currentResult = searchResults[autocompleteCycleIndex];
 
-      autocompleteCycleIndex =
-        autocompleteCycleIndex >= searchResults.length - 1
-          ? 0
-          : autocompleteCycleIndex + 1;
+      if (++autocompleteCycleIndex === searchResults.length)
+        autocompleteCycleIndex = 0;
 
       const tableData = tablify(
         searchResults,
@@ -434,13 +422,14 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
       userInput = currentResult;
       currentInsertPosition = userInput.length;
+      updateInputEndPosition();
 
       saveCursorPosition().exec();
       process.stdout.write(
         concat("\r", eraseLine(), USER_ASK, userInput, "\n", tableData.output)
       );
       restoreCursorPosition().exec();
-      moveCursorToColumn(USER_ASK.length + userInput.length + 1).exec();
+      moveInternalCursorTo(inputEndPosition);
 
       return tableData.rowCount;
     }
@@ -577,9 +566,8 @@ export default function PromptSyncPlus(config: Config | undefined) {
         firstCharOfInput === Key.BACKSPACE ||
         (process.platform === "win32" &&
           firstCharOfInput === Key.WIN_BACKSPACE);
-
-      // in case the user picked a wierd key to trigger auto-complete, allow it
-      if (isUnsupportedOrUnknownInput && !isAutocompleteTrigger) continue;
+      const autocompleteBehavior =
+        promptConfig.autocomplete?.behavior?.toLowerCase();
 
       // ^C
       if (firstCharOfInput === Key.SIGINT) {
@@ -630,7 +618,9 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
       if (
         promptConfig.autocomplete?.searchFn &&
-        (isAutocompleteTrigger || promptConfig.autocomplete.sticky)
+        (isAutocompleteTrigger ||
+          (promptConfig.autocomplete.sticky &&
+            autocompleteBehavior === AutocompleteBehavior.SUGGEST))
       ) {
         const currentUserInput = userInput;
         const prevRowsToClear = numRowsToClear;
@@ -639,7 +629,10 @@ export default function PromptSyncPlus(config: Config | undefined) {
           if (!isBackspace) {
             // need to store off current input before we process
             storeInput(firstCharOfInput);
-            move().right.exec();
+            moveInternalCursor(Direction.RIGHT);
+          } else {
+            moveInternalCursor(Direction.LEFT);
+            eraseCharacter().exec();
           }
 
           clearSuggestTable(numRowsToClear);
@@ -647,7 +640,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
         if (userInput.length === 0) continue;
 
-        switch (promptConfig.autocomplete?.behavior?.toLowerCase()) {
+        switch (autocompleteBehavior) {
           case AutocompleteBehavior.CYCLE:
             autocompleteCycle();
             break;
@@ -670,9 +663,13 @@ export default function PromptSyncPlus(config: Config | undefined) {
         continue;
       }
 
+      // in case the user picked a wierd key to trigger auto-complete, allow it
+      if (isUnsupportedOrUnknownInput && !isAutocompleteTrigger) continue;
+
       cycleSearchTerm = "";
       autocompleteCycleIndex = 0;
       clearSuggestTable(numRowsToClear);
+      numRowsToClear = 0;
 
       if (!isBackspace) storeInput(firstCharOfInput);
 
