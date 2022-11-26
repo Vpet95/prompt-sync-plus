@@ -10,10 +10,10 @@ import {
   Key,
   LineErasureMethod,
   PromptSyncHistoryObj,
-  TermInputSequence,
   Direction,
+  TermInputSequence,
 } from "./types.js";
-import {
+import utils, {
   concat,
   eraseLine,
   getCommonStartingSubstring,
@@ -24,8 +24,8 @@ import {
   restoreCursorPosition,
   saveCursorPosition,
   tablify,
-  escape,
   eraseCharacter,
+  escape,
 } from "./utils.js";
 
 // for testing purposes only - allows me to break out of possible infinite loops that arise during development
@@ -69,25 +69,6 @@ let currentInsertPosition = 0;
 //   TERM_COLS = process.stdout.columns;
 //   console.log(`resizing, new cols: ${TERM_COLS}`);
 // });
-
-// this breaks automated tests because it reads from the same file descriptor as the actual input - gobbling
-// up characters.
-const getCursorPosition = (fileDescriptor: number) => {
-  process.stdout.write(escape(`[${TermInputSequence.GET_CURSOR_POSITION}`));
-
-  const buf = Buffer.alloc(10);
-  fs.readSync(fileDescriptor, buf);
-
-  const asString = buf.toString(); // "\u001b[<row>;<col>R"
-  const coordSections = asString.substring(asString.indexOf("[")).split(";");
-
-  const pos = {
-    row: parseInt(coordSections[0].substring(1)),
-    col: parseInt(coordSections[1]),
-  };
-
-  return pos;
-};
 
 // internal function, moves the cursor once in a given direction
 // returns true if the cursor moved, false otherwise
@@ -228,6 +209,8 @@ const eraseUserInput = () => {
   eraseLine(LineErasureMethod.ENTIRE).exec();
   moveInternalCursorTo({ row: INITIAL_CURSOR_POSITION.row, col: 1 });
 };
+
+const reset_global_state = () => {};
 
 export default function PromptSyncPlus(config: Config | undefined) {
   const globalConfig = config
@@ -540,7 +523,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
     let loopCount = 0;
 
-    INITIAL_CURSOR_POSITION = getCursorPosition(fileDescriptor);
+    INITIAL_CURSOR_POSITION = utils.getCursorPosition(fileDescriptor);
     internalCursorPosition = Object.assign({}, INITIAL_CURSOR_POSITION);
     inputEndPosition = Object.assign({}, INITIAL_CURSOR_POSITION);
 

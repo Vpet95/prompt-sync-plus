@@ -1,6 +1,7 @@
+import fs from "fs";
 import { getBorderCharacters, table } from "table";
-import { GenericObject } from "./types.js";
 import {
+  GenericObject,
   TermEscapeSequence,
   TermInputSequence,
   LineErasureMethod,
@@ -186,4 +187,31 @@ export const diffIndex = (strA: string, strB: string) => {
   // implies the longer string differs than the shorter string
   // at the index past the end of the shorter string
   return i;
+};
+
+/* sinon can't stub modules, so we need to export this function as a property of an object to
+avoid running this code in our unit tests. This code tends to break the order in which
+the tests expect to see fs.readSync calls, and tends to output escape sequences to the terminal
+where the test output should be.
+
+Todo - at some point I might want to just export all of the utilies like this for consistency
+
+*/
+export default {
+  getCursorPosition: (fileDescriptor: number) => {
+    process.stdout.write(escape(`[${TermInputSequence.GET_CURSOR_POSITION}`));
+
+    const buf = Buffer.alloc(10);
+    fs.readSync(fileDescriptor, buf);
+
+    const asString = buf.toString(); // "\u001b[<row>;<col>R"
+    const coordSections = asString.substring(asString.indexOf("[")).split(";");
+
+    const pos = {
+      row: parseInt(coordSections[0].substring(1)),
+      col: parseInt(coordSections[1]),
+    };
+
+    return pos;
+  },
 };
