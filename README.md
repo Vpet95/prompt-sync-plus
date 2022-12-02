@@ -110,7 +110,7 @@ Note: prompt history supercedes up and down arrow key behavior. To use up and do
 
 ### Handling multi-line asks
 
-The above support for multi-line inputs applies to the prompts themselves, for example you can use a multi-line JavaScript template literal: 
+The above support for multi-line inputs applies to the prompts themselves, for example you can use a multi-line JavaScript template literal:
 
 ```js
 import promptSyncPlus from "./build/index.js";
@@ -125,7 +125,6 @@ console.log(`You entered: '${resp}'`);
 ```
 
 ![Kapture 2022-12-02 at 17 09 49](https://user-images.githubusercontent.com/6632738/205398554-345872c4-bde4-4eb4-a384-6cc567c96420.gif)
-
 
 ### Handling sensitive input
 
@@ -405,6 +404,7 @@ Like any open source project, this one's a work in progress. Additional work inc
 - Improving the infrastructure of this project including
   - ~~Git hooks to run code linter, formatter ([Prettier](https://prettier.io/)), and unit tests prior to push~~
   - ~~Github actions for automated building, testing, commit squashing, etc.~~
+  - Add a script to run and check `npm audit`, and generate a badge based on the result. Add badge to readme.
 - Major cleanup and refactoring to remove reliance on global state
   - Maybe a re-write, using existing tests and the same user-facing API
 - Workflow standardization - branch names, PR and issue formatting, etc.
