@@ -103,7 +103,7 @@ console.log(`You responded with: '${result}'`); // You responded with Good
 
 Prompt input that spans across multiple lines is supported in every interaction within prompt-sync-plus, including simple prompts, autocomplete suggestions, history scrolling, etc. Use arrow keys to position the cursor anywhere within the given multi-line input and edit it from the middle:
 
-`// todo`
+![multi-line-editing](https://user-images.githubusercontent.com/6632738/205397019-2126f54f-49bb-4b11-8d44-c436bfd96830.gif)
 
 Note: prompt history supercedes up and down arrow key behavior. To use up and down arrow keys for positioning, the current prompt call must not have prompt history enabled.
 
