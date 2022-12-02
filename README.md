@@ -407,6 +407,8 @@ Like any open source project, this one's a work in progress. Additional work inc
 - Workflow standardization - branch names, PR and issue formatting, etc.
 - Unit test organization and cleanup
 - Continued development to address other pain points of prompt-sync
+- Adding support for pasting text
+- Adding support for SHIFT+ENTER to insert new-line characters and continue writing
 - Development to expand the concept to add more utility:
   - `prompt.yesno()`
   - `prompt.yesnomaybe()`
