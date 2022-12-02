@@ -1,7 +1,7 @@
 {
   "name": "prompt-sync-plus",
   "version": "1.0.0",
-  "description": "Node.js synchronous prompting library",
+  "description": "Yet another synchronous prompt for Node.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [

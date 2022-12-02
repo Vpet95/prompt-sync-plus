@@ -10,6 +10,7 @@ Changes include:
 - Addition of unit tests with ~90%+ code coverage
 - Some fixes to existing autocomplete behavior
 - Addition of new autocomplete behaviors and configuration options
+- Support for multi-line inputs and editing
 - Improved documentation + examples
 
 ## Installation
@@ -385,8 +386,10 @@ Like any open source project, this one's a work in progress. Additional work inc
 - Improving the infrastructure of this project including
   - ~~Git hooks to run code linter, formatter ([Prettier](https://prettier.io/)), and unit tests prior to push~~
   - ~~Github actions for automated building, testing, commit squashing, etc.~~
+- Major cleanup and refactoring to remove reliance on global state
+  - Maybe a re-write, using existing tests and the same user-facing API
 - Workflow standardization - branch names, PR and issue formatting, etc.
-- Unit test organization and cleanup
+- Unit test organization, cleanup, and adding new/more tests
 - Continued development to address other pain points of prompt-sync
 - Development to expand the concept to add more utility:
   - `prompt.yesno()`
