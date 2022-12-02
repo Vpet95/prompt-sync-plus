@@ -47,7 +47,9 @@ export { Key, AutocompleteBehavior } from "./types.js";
 
 let USER_ASK = "";
 
-const TERM_COLS = process.stdout.columns;
+// default to 80 columns if we can't figure out the terminal column width for some reason
+// this tends to happen if you run prompt-sync-plus from another script (e.g. /build/scripts/test.js)
+const TERM_COLS = process.stdout.columns ?? 80;
 
 // top left of terminal window - weird it's not 0,0
 let INITIAL_CURSOR_POSITION: CursorPosition = { row: 1, col: 1 };

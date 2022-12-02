@@ -3,7 +3,7 @@ import { writeFileSync } from "fs";
 import { makeBadge } from "badge-maker";
 import { __dirname, EXIT_SUCCESS, EXIT_FAILURE } from "./shared.js";
 
-const MIN_COVERAGE = 95;
+const MIN_COVERAGE = 90;
 
 const testBadgeOptions = {
   label: "tests",
