@@ -108,6 +108,25 @@ Prompt input that spans across multiple lines is supported in every interaction 
 
 Note: prompt history supercedes up and down arrow key behavior. To use up and down arrow keys for positioning, the current prompt call must not have prompt history enabled.
 
+### Handling multi-line asks
+
+The above support for multi-line inputs applies to the prompts themselves, for example you can use a multi-line JavaScript template literal: 
+
+```js
+import promptSyncPlus from "./build/index.js";
+
+const prompt = promptSyncPlus();
+
+const resp = prompt(`Enter
+Something
+Here: `);
+
+console.log(`You entered: '${resp}'`);
+```
+
+![Kapture 2022-12-02 at 17 09 49](https://user-images.githubusercontent.com/6632738/205398554-345872c4-bde4-4eb4-a384-6cc567c96420.gif)
+
+
 ### Handling sensitive input
 
 For password entry, etc. character input can be obscured via the `echo` field:
@@ -391,6 +410,8 @@ Like any open source project, this one's a work in progress. Additional work inc
 - Workflow standardization - branch names, PR and issue formatting, etc.
 - Unit test organization, cleanup, and adding new/more tests
 - Continued development to address other pain points of prompt-sync
+- Adding support for pasting text
+- Adding support for SHIFT+ENTER to insert new-line characters and continue writing
 - Development to expand the concept to add more utility:
   - `prompt.yesno()`
   - `prompt.yesnomaybe()`
