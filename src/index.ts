@@ -11,7 +11,6 @@ import {
   LineErasureMethod,
   PromptSyncHistoryObj,
   Direction,
-  TermInputSequence,
 } from "./types.js";
 import utils, {
   concat,
@@ -25,7 +24,6 @@ import utils, {
   saveCursorPosition,
   tablify,
   eraseCharacter,
-  escape,
 } from "./utils.js";
 
 // for testing purposes only - allows me to break out of possible infinite loops that arise during development
@@ -37,6 +35,8 @@ type PromptType = {
   hide?: (ask: string) => string;
 };
 
+// todo - might be best to just move all cursor logic into a file
+// like cursor.ts to clean this up
 type CursorPosition = {
   row: number;
   col: number;
@@ -210,7 +210,15 @@ const eraseUserInput = () => {
   moveInternalCursorTo({ row: INITIAL_CURSOR_POSITION.row, col: 1 });
 };
 
-const reset_global_state = () => {};
+// in an ideal world it'd be best to avoid global state altogether
+// alas, this function exists to reset different variables to allow users to run prompt
+// multiple times in their programs without issue
+const reset = () => {
+  USER_ASK = "";
+  currentInsertPosition = 0;
+  internalCursorPosition = { row: 1, col: 1 };
+  inputEndPosition = { row: 1, col: 1 };
+};
 
 export default function PromptSyncPlus(config: Config | undefined) {
   const globalConfig = config
@@ -580,8 +588,12 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
         fs.closeSync(fileDescriptor);
         if (!history) break;
-        if (promptConfig.echo === undefined && userInput.length)
-          history.push(userInput);
+        if (
+          promptConfig.echo === undefined &&
+          (userInput.length || defaultValue.length)
+        )
+          history.push(userInput || defaultValue);
+
         history.reset();
         break;
       }
@@ -671,6 +683,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
     // move cursor to the end just before submission - necessary in cases where the user was
     // editing input somewhere in the middle of a multi-line entry
     moveInternalCursorTo(inputEndPosition);
+    reset();
 
     process.stdout.write("\n");
     process.stdin.setRawMode && process.stdin.setRawMode(wasRaw);
