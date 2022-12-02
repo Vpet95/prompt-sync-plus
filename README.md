@@ -99,6 +99,14 @@ console.log(`You responded with: '${result}'`); // You responded with Good
 
 ![Kapture 2022-09-23 at 16 38 18](https://user-images.githubusercontent.com/6632738/192052875-a3ad8be7-20d6-4be7-8402-2d704b5a7402.gif)
 
+### Handling multi-line input
+
+Prompt input that spans across multiple lines is supported in every interaction within prompt-sync-plus, including simple prompts, autocomplete suggestions, history scrolling, etc. Use arrow keys to position the cursor anywhere within the given multi-line input and edit it from the middle:
+
+`// todo`
+
+Note: prompt history supercedes up and down arrow key behavior. To use up and down arrow keys for positioning, the current prompt call must not have prompt history enabled.
+
 ### Handling sensitive input
 
 For password entry, etc. character input can be obscured via the `echo` field:
@@ -356,7 +364,10 @@ To work on prompt-sync-plus:
 - Clone the repo locally
 - Run `npm install` to pull down dependencies
 - Run `npm run build` to compile the TypeScript
+  - This generates JavaScript files and sourcemap files in the build directory, as well as TypeScript type definitions in the build/dts directory
+  - The second step in the build runs [rollup.js](https://rollupjs.org/guide/en/) to bundle everything into a single source file called index.js in the dist folder
 - Run `npm run test` to run unit tests or `npm run test-coverage` to run tests and output a test coverage report
+  - This project uses the [mocha](https://mochajs.org/) test framework, the [chai](https://www.chaijs.com/) assertion library, and [c8](https://github.com/bcoe/c8) tool to generate test coverage reports
 
 In general: prompt-sync-plus development follows the [Git Feature Branch](https://www.atlassian.com/git/tutorials/comparing-workflows/feature-branch-workflow) workflow - new feature work or bug fixes should be done in a dedicated branch.
 
@@ -364,7 +375,8 @@ Attempt to add tests to the test suite whenever possible.
 
 This project uses [husky](https://typicode.github.io/husky/#/) to run pre- and post-commit git hooks to run code formatting via [prettier](https://prettier.io/), build, run tests, and update status badges.
 
-This process will fail if tests fail, code coverage dips, or the build fails.
+This process will fail if tests fail, code coverage dips below minimum, or the build fails.
+Github actions run in response to pull requests to build and run tests.
 
 ## Roadmap
 
