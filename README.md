@@ -84,10 +84,12 @@ Both methods of configuration take the same JSON schema. See [API]() for a full 
 A global default value can be supplied via the `defaultResponse` field:
 
 ```js
+import psp from "prompt-sync-plus";
+
 const prompt = psp({ defaultResponse: "No response" });
 const result = prompt("Some question");
 
-console.log(result): // No response
+console.log(result); // No response
 ```
 
 A prompt-specific default value can be supplied as a second argument to the prompt:
