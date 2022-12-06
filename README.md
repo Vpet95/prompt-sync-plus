@@ -359,6 +359,7 @@ result = prompt("Prompt 2: ");
 result = prompt("Prompt 3: ");
 result = prompt("Prompt 4: ");
 result = prompt("Prompt 5: ");
+result = prompt("Prompt 6: ");
 
 /* user can choose to up or down arrow to scroll through past responses */
 
