@@ -119,11 +119,11 @@ import psp from "prompt-sync-plus";
 
 const prompt = psp();
 
-const resp = prompt(`Enter
+const result = prompt(`Enter
 Something
 Here: `);
 
-console.log(`You entered: '${resp}'`);
+console.log(`You entered: '${result}'`);
 ```
 
 ![Kapture 2022-12-02 at 17 09 49](https://user-images.githubusercontent.com/6632738/205398554-345872c4-bde4-4eb4-a384-6cc567c96420.gif)
