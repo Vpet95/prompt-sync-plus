@@ -28,9 +28,9 @@ npm install --save prompt-sync-plus
 At minimum, you need to import the library and instantiate the prompt. The entered text is returned directly:
 
 ```js
-import prompSyncPlus from "prompt-sync-plus";
+import psp from "prompt-sync-plus";
 
-const prompt = prompSyncPlus();
+const prompt = psp();
 const result = prompt("How are you? ");
 
 console.log(`You responded with: '${result}'`);
@@ -43,9 +43,9 @@ console.log(`You responded with: '${result}'`);
 Prompt settings can be supplied via JSON object globally and/or on a prompt-by-prompt basis. Global settings are supplied when the prompt is instantiated:
 
 ```js
-import prompSyncPlus from "prompt-sync-plus";
+import psp from "prompt-sync-plus";
 
-const prompt = prompSyncPlus({
+const prompt = psp({
   /* your settings here */
 });
 ```
@@ -69,9 +69,9 @@ const result = prompt("How are you?", "Good", {
 Prompt-specific settings override global settings wherever there is overlap:
 
 ```js
-import prompSyncPlus from "prompt-sync-plus";
+import psp from "prompt-sync-plus";
 
-const prompt = prompSyncPlus({ sigint: true });
+const prompt = psp({ sigint: true });
 
 // overrides sigint behavior established by global setting above
 const result = prompt("How are you?", { sigint: false });
@@ -115,9 +115,9 @@ Note: prompt history supercedes up and down arrow key behavior. To use up and do
 The above support for multi-line inputs applies to the prompts themselves, for example you can use a multi-line JavaScript template literal:
 
 ```js
-import promptSyncPlus from "prompt-sync-plus";
+import psp from "prompt-sync-plus";
 
-const prompt = promptSyncPlus();
+const prompt = psp();
 
 const resp = prompt(`Enter
 Something
