@@ -354,16 +354,16 @@ const prompt = psp({
   history: promptSyncHistory(),
 });
 
-prompt("Prompt 1: ");
-prompt("Prompt 2: ");
-prompt("Prompt 3: ");
-prompt("Prompt 4: ");
-prompt("Prompt 5: ");
+let result = prompt("Prompt 1: ");
+result = prompt("Prompt 2: ");
+result = prompt("Prompt 3: ");
+result = prompt("Prompt 4: ");
+result = prompt("Prompt 5: ");
 
 /* user can choose to up or down arrow to scroll through past responses */
 
 // or persist responses to disk
-result.history.save();
+prompt.history.save();
 ```
 
 ![Kapture 2022-09-23 at 17 13 23](https://user-images.githubusercontent.com/6632738/192057591-3f70eec5-2fef-466a-907d-dadd6b23e97b.gif)
