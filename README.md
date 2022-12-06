@@ -115,7 +115,7 @@ Note: prompt history supercedes up and down arrow key behavior. To use up and do
 The above support for multi-line inputs applies to the prompts themselves, for example you can use a multi-line JavaScript template literal:
 
 ```js
-import promptSyncPlus from "./build/index.js";
+import promptSyncPlus from "prompt-sync-plus";
 
 const prompt = promptSyncPlus();
 
