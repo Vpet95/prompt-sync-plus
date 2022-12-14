@@ -189,6 +189,31 @@ export const diffIndex = (strA: string, strB: string) => {
   return i;
 };
 
+// truncates a list of autocomplete suggestions so that the list always fits in the current remaining number of rows
+// given the current cursor position and column spread of suggestions
+export const truncateSuggestions = (
+  suggestions: string[],
+  numColumns: number,
+  currentCursorRow: number,
+  termMaxRows: number
+) => {
+  // subtract an extra 1 since that represents the line of input the
+  // cursor is on, and suggestions begin output from the next line
+  const rowsRemaining = termMaxRows - currentCursorRow - 1;
+  // subtract an extra 1 since we include a notice the list was truncated
+  const truncatedListLength = rowsRemaining * numColumns - 1;
+
+  // any fractional part must by definition take up a extra row
+  const numRowsNeeded = Math.ceil(suggestions.length / numColumns);
+
+  return numRowsNeeded > rowsRemaining
+    ? [
+        ...suggestions.slice(0, truncatedListLength),
+        `${suggestions.length - truncatedListLength} more...`,
+      ]
+    : suggestions;
+};
+
 /* sinon can't stub modules, so we need to export this function as a property of an object to
 avoid running this code in our unit tests. This code tends to break the order in which
 the tests expect to see fs.readSync calls, and tends to output escape sequences to the terminal

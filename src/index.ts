@@ -24,6 +24,7 @@ import utils, {
   saveCursorPosition,
   tablify,
   eraseCharacter,
+  truncateSuggestions,
 } from "./utils.js";
 
 // for testing purposes only - allows me to break out of possible infinite loops that arise during development
@@ -50,6 +51,8 @@ let USER_ASK = "";
 // default to 80 columns if we can't figure out the terminal column width for some reason
 // this tends to happen if you run prompt-sync-plus from another script (e.g. /build/scripts/test.js)
 const TERM_COLS = process.stdout.columns ?? 80;
+// 55 is arbitrary - just happens to be how many rows my terminal can fit when maximized
+const TERM_ROWS = process.stdout.rows ?? 55;
 
 // top left of terminal window - weird it's not 0,0
 let INITIAL_CURSOR_POSITION: CursorPosition = { row: 1, col: 1 };
@@ -361,8 +364,20 @@ export default function PromptSyncPlus(config: Config | undefined) {
         return 0;
       }
 
+      const truncated = truncateSuggestions(
+        searchResults,
+        promptConfig.autocomplete.suggestColCount,
+        internalCursorPosition.row,
+        TERM_ROWS
+      );
+
+      const wasTruncated = truncated.length !== searchResults.length;
+
       if (!isBackspace && promptConfig.autocomplete.fill) {
-        const commonSubstring = getCommonStartingSubstring(searchResults);
+        // don't consider the "x more..." content we fill in
+        const commonSubstring = getCommonStartingSubstring(
+          wasTruncated ? truncated.slice(0, -1) : truncated
+        );
 
         if (commonSubstring && commonSubstring !== userInput) {
           userInput = commonSubstring;
@@ -373,7 +388,7 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
       currentInsertPosition = userInput.length;
       const tableData = tablify(
-        searchResults,
+        truncated,
         promptConfig.autocomplete.suggestColCount
       );
 
@@ -403,13 +418,26 @@ export default function PromptSyncPlus(config: Config | undefined) {
         return 0;
       }
 
-      const currentResult = searchResults[autocompleteCycleIndex];
+      const truncated = truncateSuggestions(
+        searchResults,
+        promptConfig.autocomplete.suggestColCount,
+        internalCursorPosition.row,
+        TERM_ROWS
+      );
+      const wasTruncated = truncated.length !== searchResults.length;
 
-      if (++autocompleteCycleIndex === searchResults.length)
+      const currentResult = (wasTruncated ? truncated.slice(0, -1) : truncated)[
+        autocompleteCycleIndex
+      ];
+
+      if (
+        ++autocompleteCycleIndex ===
+        truncated.length - (wasTruncated ? 1 : 0)
+      )
         autocompleteCycleIndex = 0;
 
       const tableData = tablify(
-        searchResults,
+        truncated,
         promptConfig.autocomplete.suggestColCount
       );
 
