@@ -592,9 +592,12 @@ export default function PromptSyncPlus(config: Config | undefined) {
 
       // ^C
       if (firstCharOfInput === Key.SIGINT) {
-        moveInternalCursorTo(inputEndPosition);
+        // in case we're canceling a prompt that had suggestions, clear them out
+        clearSuggestTable(numRowsToClear);
 
+        moveInternalCursorTo(inputEndPosition);
         process.stdout.write("^C\n");
+
         fs.closeSync(fileDescriptor);
 
         if (promptConfig.sigint) process.exit(ExitCode.SIGINT);
@@ -606,6 +609,9 @@ export default function PromptSyncPlus(config: Config | undefined) {
       // ^D
       if (firstCharOfInput === Key.EOT) {
         if (userInput.length === 0 && promptConfig.eot) {
+          // in case we're canceling a prompt that had suggestions, clear them out
+          clearSuggestTable(numRowsToClear);
+
           moveInternalCursorTo(inputEndPosition);
           process.stdout.write("exit\n");
           process.exit(ExitCode.SUCCESS);
